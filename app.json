@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Uade---ReactNative",
-    "slug": "Uade---ReactNative",
+    "name": "Hallado",
+    "slug": "hallado",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,14 +11,24 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F2F2F0"
+      },
+      "package": "com.uade.hallado"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-local-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Hallado usa tus fotos para elegir tu foto de perfil.",
+          "cameraPermission": "Hallado usa la cámara para sacar tu foto de perfil."
+        }
+      ]
+    ]
   }
 }
