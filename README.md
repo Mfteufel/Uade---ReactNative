@@ -42,6 +42,41 @@ Después, elegí una opción:
 
 Atajos en la terminal de Expo: `r` recarga, `a` abre en Android, `Ctrl+C` corta.
 
+## Instalar la app en el celular por USB (con el ícono real)
+
+Expo Go siempre muestra su propio ícono. Para instalar la app "Hallado" de verdad hace falta un build nativo.
+
+Requisitos:
+- Android Studio con el SDK de Android instalado (Gradle baja el NDK y CMake solo).
+- **JDK 17** (con JDK 24 o 25 el build falla en la tarea CMake).
+
+Pasos:
+1. En el celular: activá "Opciones de desarrollador" y "Depuración USB".
+2. Conectalo por USB, desbloquealo y aceptá el permiso de depuración.
+3. Verificá que aparezca: `adb devices`.
+4. Configurá las variables (Linux/macOS; ajustá las rutas a tu equipo):
+   ```bash
+   export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+   export ANDROID_HOME=$HOME/Android/Sdk
+   export PATH=$JAVA_HOME/bin:$PATH:$ANDROID_HOME/platform-tools
+   ```
+5. Compilá e instalá (la primera vez tarda varios minutos):
+   ```bash
+   npx expo run:android
+   ```
+6. Buscá "Hallado" en el menú de apps.
+
+Notas:
+- La carpeta `android/` se genera sola y está en el `.gitignore`.
+- Esta app tiene su propio almacenamiento: los usuarios creados en Expo Go no aparecen acá.
+- La app instalada carga el código desde el servidor de Expo de la PC (puerto 8081). Si ese puerto está ocupado:
+  ```bash
+  npx expo start --port 8082
+  adb reverse tcp:8081 tcp:8082
+  ```
+  Después reabrí la app.
+- Si la app abre pero no carga ("Unable to load script"), revisá que el servidor de Expo esté corriendo.
+
 ## Probar la app (modo mock)
 
 Usuarios de ejemplo (contraseña de todos: `hallado123`):
