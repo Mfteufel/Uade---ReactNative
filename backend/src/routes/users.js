@@ -1,6 +1,8 @@
 const { Router } = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { usersLimiter } = require('../middleware/rateLimit');
+const { usersLimiter, photoUploadLimiter } = require('../middleware/rateLimit');
+const { rejectIfTooLarge, uploadGate, parsePhoto } = require('../middleware/upload');
+const { savePhoto } = require('../services/photos');
 const profile = require('../services/profile');
 const { getPublicProfile } = require('../services/publicProfile');
 const { getReputation } = require('../services/reputation');
@@ -8,6 +10,20 @@ const { HttpError } = require('../middleware/errors');
 
 const router = Router();
 router.use(requireAuth, usersLimiter);
+
+router.post('/me/photo', photoUploadLimiter, rejectIfTooLarge, uploadGate, parsePhoto, async (req, res, next) => {
+  if (res.headersSent) return;
+  req.photoProcessing = true; // desde acá libera el finally, no el 'close' del cliente
+  try {
+    const file = req.file;
+    const user = await savePhoto(req.user.id, file && file.buffer);
+    if (!res.headersSent) res.status(200).json(user);
+  } catch (e) {
+    next(e);
+  } finally {
+    req.releaseGate();
+  }
+});
 
 router.get('/me', async (req, res, next) => {
   try {

@@ -1,4 +1,5 @@
 process.env.JWT_SECRET = 'x'.repeat(48);
+process.env.PUBLIC_URL = 'http://test.local:3000';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { computeReputation } = require('../src/services/reputation');
@@ -36,6 +37,9 @@ test('toPublicProfile devuelve exactamente la lista blanca', () => {
   const out = toPublicProfile(row, rep);
   assert.deepEqual(Object.keys(out).sort(), ['id', 'memberSince', 'name', 'photoUri', 'reputation']);
   assert.equal(out.memberSince, '2024-03-10T12:00:00.000Z');
-  assert.equal(out.photoUri, null);
+  assert.equal(out.photoUri, 'http://test.local:3000/photos/p');
   assert.equal(out.reputation, rep);
+  const out2 = toPublicProfile({ ...row, photo_id: null }, rep);
+  assert.equal(out2.photoUri, null);
+  assert.deepEqual(Object.keys(out2).sort(), ['id', 'memberSince', 'name', 'photoUri', 'reputation']);
 });

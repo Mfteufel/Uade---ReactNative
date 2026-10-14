@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config');
 const { HttpError } = require('../middleware/errors');
+const { photoUrl } = require('./photoUrl');
 
 const BCRYPT_COST = 10;
 const ACCESS_TTL = '15m';
@@ -57,7 +58,7 @@ function toUser(row) {
     id: row.id,
     email: row.email,
     name: row.name,
-    photoUri: null,
+    photoUri: photoUrl(row.photo_id),
     neighborhood: row.neighborhood,
     phone: row.phone,
     phoneVisibleOnClaim: row.phone_visible_on_claim,

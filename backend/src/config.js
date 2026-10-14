@@ -23,12 +23,42 @@ if (isProd && !mailConfigured) {
   throw new Error('Faltan BREVO_API_KEY / MAIL_FROM en producción: sin ellos no se pueden enviar los códigos por mail.');
 }
 
+// Pura: valida y normaliza PUBLIC_URL (base de las URLs de fotos). Nunca se deriva de headers.
+function parsePublicUrl(raw, { isProd, port }) {
+  let v = typeof raw === 'string' ? raw.trim().replace(/\/+$/, '') : '';
+  if (!v) {
+    if (isProd) throw new Error('Falta PUBLIC_URL en producción (https://tu-dominio).');
+    return `http://localhost:${port}`;
+  }
+  let u;
+  try {
+    u = new URL(v);
+  } catch {
+    throw new Error('PUBLIC_URL no es una URL válida.');
+  }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('PUBLIC_URL debe ser http o https.');
+  if (u.username || u.password) throw new Error('PUBLIC_URL no puede tener usuario ni clave.');
+  if (u.pathname !== '/' || u.search || u.hash || /[?#]/.test(v)) {
+    throw new Error('PUBLIC_URL no puede tener path, query ni hash.');
+  }
+  if (isProd && u.protocol !== 'https:') throw new Error('PUBLIC_URL debe ser https en producción.');
+  return u.origin;
+}
+
+const PORT = process.env.PORT || 3000;
+const PUBLIC_URL = parsePublicUrl(process.env.PUBLIC_URL, { isProd, port: PORT });
+if (!String(process.env.PUBLIC_URL || '').trim()) {
+  console.warn(`[CONFIG] Falta PUBLIC_URL; uso ${PUBLIC_URL} (solo desarrollo).`);
+}
+
 const TRUST_PROXY = Number.parseInt(process.env.TRUST_PROXY || '0', 10) || 0;
 
 module.exports = {
   TRUST_PROXY,
   NODE_ENV,
-  PORT: process.env.PORT || 3000,
+  PORT,
+  PUBLIC_URL,
+  parsePublicUrl,
   JWT_SECRET,
   BREVO_API_KEY,
   MAIL_FROM,
