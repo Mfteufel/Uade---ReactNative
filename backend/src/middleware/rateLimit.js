@@ -11,5 +11,9 @@ const loginLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 10, s
 const authLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 60 });
 const otpLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 5 });
 const resetLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 10, skipSuccessfulRequests: true });
+// Por usuario (requiere req.user: va después de requireAuth).
+const usersLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 300, keyGenerator: (req) => req.user.id });
+// Por IP, solo cuenta requests fallidos (sin token / token inválido).
+const unauthLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 100, skipSuccessfulRequests: true });
 
-module.exports = { loginLimiter, authLimiter, otpLimiter, resetLimiter };
+module.exports = { usersLimiter, unauthLimiter, loginLimiter, authLimiter, otpLimiter, resetLimiter };

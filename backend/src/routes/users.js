@@ -1,16 +1,22 @@
 const { Router } = require('express');
-const { query } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { HttpError } = require('../middleware/errors');
-const { toUser } = require('../services/tokens');
+const { usersLimiter } = require('../middleware/rateLimit');
+const profile = require('../services/profile');
 
 const router = Router();
+router.use(requireAuth, usersLimiter);
 
-router.get('/me', requireAuth, async (req, res, next) => {
+router.get('/me', async (req, res, next) => {
   try {
-    const r = await query('SELECT * FROM users WHERE id = $1', [req.user.id]);
-    if (r.rowCount === 0) throw new HttpError(401, 'Sesión inválida. Volvé a iniciar sesión.');
-    res.json(toUser(r.rows[0]));
+    res.json(await profile.getMe(req.user.id));
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.put('/me', async (req, res, next) => {
+  try {
+    res.json(await profile.updateMe(req.user.id, req.body));
   } catch (e) {
     next(e);
   }

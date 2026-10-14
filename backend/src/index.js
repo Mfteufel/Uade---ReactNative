@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
-const { authLimiter } = require('./middleware/rateLimit');
+const { authLimiter, unauthLimiter } = require('./middleware/rateLimit');
 const { notFound, errorHandler } = require('./middleware/errors');
 
 const app = express();
@@ -20,7 +20,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/auth', authLimiter, authRouter);
-app.use('/users', usersRouter);
+app.use('/users', unauthLimiter, usersRouter);
 
 app.use(notFound);
 app.use(errorHandler);
