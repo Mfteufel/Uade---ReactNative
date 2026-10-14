@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { HttpError } = require('../middleware/errors');
 
 const OTP_TTL_SEC = 600;
 const OTP_RESEND_SEC = 60;
@@ -22,6 +23,14 @@ function evaluateAttempt({ expired, matches, attempts }) {
 const wrongCodeMessage = (left) =>
   left === 1 ? 'Código incorrecto. Te queda 1 intento.' : `Código incorrecto. Te quedan ${left} intentos.`;
 
+function outcomeError(r) {
+  if (r.none) return new HttpError(400, 'Pedí un código primero.');
+  if (r.outcome === 'expired') return new HttpError(410, 'El código venció. Pedí uno nuevo.');
+  if (r.outcome === 'wrong') return new HttpError(400, wrongCodeMessage(r.left));
+  if (r.outcome === 'locked') return new HttpError(429, 'Demasiados intentos fallidos. Pedí un código nuevo.');
+  return null;
+}
+
 const normalizeEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
 const isValidEmail = (email) =>
   typeof email === 'string' && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -37,6 +46,7 @@ module.exports = {
   cooldownRemaining,
   evaluateAttempt,
   wrongCodeMessage,
+  outcomeError,
   normalizeEmail,
   isValidEmail,
 };

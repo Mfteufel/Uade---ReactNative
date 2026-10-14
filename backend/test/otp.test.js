@@ -59,3 +59,15 @@ test('isValidEmail rechaza 255 caracteres y acepta 254', () => {
   assert.equal(o.isValidEmail('a'.repeat(243) + '@example.com'), false);
   assert.equal(o.isValidEmail('a'.repeat(242) + '@example.com'), true);
 });
+
+test('outcomeError mapea cada resultado', () => {
+  const e = (r) => o.outcomeError(r);
+  assert.deepEqual([e({ none: true }).status, e({ none: true }).message], [400, 'Pedí un código primero.']);
+  assert.deepEqual([e({ outcome: 'expired' }).status, e({ outcome: 'expired' }).message], [410, 'El código venció. Pedí uno nuevo.']);
+  const w = e({ outcome: 'wrong', left: 4 });
+  assert.deepEqual([w.status, w.message], [400, 'Código incorrecto. Te quedan 4 intentos.']);
+  assert.equal(e({ outcome: 'wrong', left: 1 }).message, 'Código incorrecto. Te queda 1 intento.');
+  const l = e({ outcome: 'locked', attempts: 5 });
+  assert.deepEqual([l.status, l.message], [429, 'Demasiados intentos fallidos. Pedí un código nuevo.']);
+  assert.equal(e({ outcome: 'ok' }), null);
+});
