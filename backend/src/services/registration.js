@@ -4,7 +4,7 @@ const { query, withTransaction } = require('../db');
 const { HttpError } = require('../middleware/errors');
 const otp = require('./otp');
 const { sendOtpEmail } = require('./mailer');
-const { signRegistrationToken, verifyRegistrationToken, createSession } = require('./tokens');
+const { BCRYPT_COST, signRegistrationToken, verifyRegistrationToken, createSession } = require('./tokens');
 
 const tooSoon = (wait) => new HttpError(429, `Esperá ${wait} segundos para pedir otro código.`);
 
@@ -114,7 +114,7 @@ async function setPassword(body) {
   if (Buffer.byteLength(password) > 72) {
     throw new HttpError(422, 'La contraseña no puede superar los 72 caracteres.');
   }
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await bcrypt.hash(password, BCRYPT_COST);
 
   const result = await withTransaction(async (client) => {
     const id = 'u_' + crypto.randomBytes(12).toString('hex');

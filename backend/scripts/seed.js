@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/db');
+const { BCRYPT_COST } = require('../src/services/tokens');
 
 const PASSWORD = 'hallado123';
 
@@ -23,7 +24,7 @@ function spread(user, i, n) {
 }
 
 async function main() {
-  const hash = await bcrypt.hash(PASSWORD, 10);
+  const hash = await bcrypt.hash(PASSWORD, BCRYPT_COST);
   const ids = USERS.map((u) => u.id);
   const client = await pool.connect();
   try {

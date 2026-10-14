@@ -23,7 +23,10 @@ if (isProd && !mailConfigured) {
   throw new Error('Faltan BREVO_API_KEY / MAIL_FROM en producción: sin ellos no se pueden enviar los códigos por mail.');
 }
 
+const TRUST_PROXY = Number.parseInt(process.env.TRUST_PROXY || '0', 10) || 0;
+
 module.exports = {
+  TRUST_PROXY,
   NODE_ENV,
   PORT: process.env.PORT || 3000,
   JWT_SECRET,

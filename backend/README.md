@@ -26,3 +26,4 @@ Health check: `GET /health` responde `{"status":"ok"}`.
 | MAIL_FROM       | Dirección remitente de los mails              |
 | PUBLIC_URL      | URL pública del backend                       |
 | NODE_ENV        | Entorno (development / production)            |
+| TRUST_PROXY     | Cantidad de proxies delante del server (0 por defecto; para rate limit por IP) |
