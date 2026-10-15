@@ -1,6 +1,6 @@
 import { API_URL, REQUEST_TIMEOUT_MS } from '../config';
 import { ApiError } from './errors';
-import { getAccessToken } from './tokenStore';
+import { getAccessToken, refreshAccessToken } from './tokenStore';
 
 const GET_RETRIES = 2; // reintentos solo para GET
 const RETRY_DELAY_MS = 500;
@@ -54,18 +54,31 @@ async function requestOnce(method, path, body) {
 async function request(method, path, body) {
   // Reintentos SOLO en GET (son seguros). Nunca en POST/PUT: podrían duplicar la acción.
   const attempts = method === 'GET' ? GET_RETRIES + 1 : 1;
-  let lastError;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await requestOnce(method, path, body);
-    } catch (e) {
-      lastError = e;
-      const retryable = e.status === 0 || e.status === 408 || e.status >= 500;
-      if (!retryable || i === attempts - 1) break;
-      await sleep(RETRY_DELAY_MS);
+  const send = async () => {
+    let lastError;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await requestOnce(method, path, body);
+      } catch (e) {
+        lastError = e;
+        const retryable = e.status === 0 || e.status === 408 || e.status >= 500;
+        if (!retryable || i === attempts - 1) break;
+        await sleep(RETRY_DELAY_MS);
+      }
     }
+    throw lastError;
+  };
+
+  const hadToken = getAccessToken() != null;
+  try {
+    return await send();
+  } catch (e) {
+    // Solo un 401 de sesión: había token y no es una ruta /auth/* (esas dan 401 propios).
+    if (e.status !== 401 || !hadToken || path.startsWith('/auth/')) throw e;
+    if (!(await refreshAccessToken())) throw e;
+    // Reintentar un POST/PUT tras 401 es seguro: el servidor lo rechazó antes de hacer nada.
+    return send(); // una sola vez: si vuelve a fallar, el error sale tal cual
   }
-  throw lastError;
 }
 
 const client = {
