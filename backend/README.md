@@ -7,8 +7,8 @@ El contrato de endpoints está en [`../API_CONTRACT.md`](../API_CONTRACT.md).
 
 - **Node.js 22**.
 - **PostgreSQL 13 o más**. Recomendado: [Neon](https://neon.tech) (plan gratis).
-- Opcional: cuenta en [Brevo](https://www.brevo.com) para enviar los códigos por mail.
-  Sin Brevo, los códigos salen por la consola del servidor.
+- Opcional: una cuenta de Gmail (o de [Brevo](https://www.brevo.com)) para enviar los códigos por mail.
+  Sin ninguna, los códigos salen por la consola del servidor. Ver "Enviar correos reales".
 
 ## 1. Crear la base de datos (Neon)
 
@@ -65,15 +65,41 @@ Health check: `GET /health` responde `{"status":"ok"}`.
 | `PORT` | No (por defecto `3000`) | Puerto HTTP del server. |
 | `DATABASE_URL` | Sí | Connection string de PostgreSQL. Sin ella el server no puede usar la base. |
 | `JWT_SECRET` | Sí | Secreto para firmar los tokens. Si falta, el server no arranca. Usá al menos 32 caracteres. En producción, mínimo 32 o no arranca. |
-| `BREVO_API_KEY` | Solo en producción | API key de Brevo para enviar los códigos por mail. |
-| `MAIL_FROM` | Solo en producción | Dirección remitente de los mails. Tiene que estar verificada en Brevo. |
+| `SMTP_HOST` | No (por defecto `smtp.gmail.com`) | Servidor SMTP. |
+| `SMTP_PORT` | No (por defecto `465`) | Puerto SMTP (1-65535). Con `465` la conexión es TLS directa; con otro (p. ej. `587`) no. |
+| `SMTP_USER` | Con `SMTP_PASS` | Usuario SMTP (tu Gmail). Con `SMTP_USER` y `SMTP_PASS` se envía por SMTP. |
+| `SMTP_PASS` | Con `SMTP_USER` | Contraseña de aplicación de Google. Es un secreto: solo en `.env`. |
+| `BREVO_API_KEY` | Alternativa | API key de Brevo. Se usa si no hay SMTP. |
+| `MAIL_FROM` | Con Brevo (opcional con SMTP) | Remitente. Con Brevo tiene que estar verificado; con SMTP por defecto es `SMTP_USER`. |
+
+En producción hace falta SMTP (`SMTP_USER` + `SMTP_PASS`) o Brevo (`BREVO_API_KEY` + `MAIL_FROM`); si no, el server no arranca. Prioridad: SMTP, Brevo, consola.
 | `PUBLIC_URL` | Solo en producción | URL pública del backend, sin path. Es la base de `photoUri`. Ver abajo. |
 | `NODE_ENV` | No (por defecto `development`) | `production` activa las validaciones estrictas y desactiva el log de pedidos. |
 | `TRUST_PROXY` | No (por defecto `0`) | Cantidad de proxies delante del server. Solo hace falta detrás de un proxy o un hosting, para que el rate limit use la IP real. |
 | `UPLOAD_TIMEOUT_MS` | No (por defecto `30000`) | Tiempo máximo de una subida de foto, en milisegundos. |
 
-En desarrollo, si falta `BREVO_API_KEY` o `MAIL_FROM`, el código de verificación se imprime en la consola del servidor:
+En desarrollo, sin SMTP ni Brevo configurados, el código de verificación se imprime en la consola del servidor:
 `[MAIL DEV] código register para lucia@...: 123456`.
+
+## Enviar correos reales
+
+**a) Gmail (SMTP)**
+
+1. Activá la verificación en 2 pasos en tu cuenta de Google.
+2. Creá una contraseña de aplicación en <https://myaccount.google.com/apppasswords>.
+3. En `backend/.env` poné `SMTP_USER=tu@gmail.com` y `SMTP_PASS=<la contraseña de 16 letras, sin espacios>`.
+4. Reiniciá el server. Al arrancar verás `[CONFIG] Mail: smtp (smtp.gmail.com:465)`.
+5. Pedí un código: en el log debe aparecer `[MAIL] enviado a ...`. Si falla, aparece `[MAIL] error al enviar: SMTP <código>` y el endpoint responde `502`.
+
+**b) Alternativa: Brevo.** Poné `BREVO_API_KEY` y `MAIL_FROM` (remitente verificado en Brevo). Se usa solo si no hay `SMTP_USER`/`SMTP_PASS`.
+
+**c) Sin ninguna.** El código sale por la consola del servidor (`[MAIL DEV] ...`). Solo sirve en desarrollo.
+
+**Avisos**
+
+- Gmail limita los envíos diarios (verificá el tope vigente en la documentación de Google); alcanza para pruebas, no para mucho tráfico.
+- Algunos hostings bloquean los puertos SMTP salientes. Si pasa al desplegar, usá un proveedor por API HTTP (como Brevo).
+- La contraseña de aplicación es un secreto: va solo en `.env`, nunca en el repo. Se revoca desde la cuenta de Google.
 
 ### PUBLIC_URL (fotos de perfil)
 
@@ -123,7 +149,7 @@ También aparecen `[MAIL]` (envío de mails), `[MAIL DEV]` (código en consola) 
   Para ver qué lo usa: `lsof -i :3000` (Linux/macOS).
 - **`Falta JWT_SECRET`**: completá `JWT_SECRET` en `.env`.
 - **`Falta PUBLIC_URL en producción`**: definí `PUBLIC_URL` con `https://`.
-- **`502` al pedir un código**: falló el envío por Brevo. Revisá `BREVO_API_KEY`, `MAIL_FROM` y la línea `[MAIL]`.
+- **`502` al pedir un código**: falló el envío del mail. Revisá las credenciales (`SMTP_USER`/`SMTP_PASS` o `BREVO_API_KEY`/`MAIL_FROM`) y la línea `[MAIL]`.
 
 ## Estructura
 

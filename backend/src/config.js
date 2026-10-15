@@ -16,12 +16,46 @@ if (JWT_SECRET.length < 32) {
   console.warn('[CONFIG] JWT_SECRET es corto (menos de 32 caracteres). Usá uno más largo.');
 }
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
-const MAIL_FROM = process.env.MAIL_FROM || '';
-const mailConfigured = Boolean(BREVO_API_KEY && MAIL_FROM);
-if (isProd && !mailConfigured) {
-  throw new Error('Faltan BREVO_API_KEY / MAIL_FROM en producción: sin ellos no se pueden enviar los códigos por mail.');
+// Pura: decide cómo se envían los mails. Prioridad: smtp > brevo > console.
+function resolveMailConfig(env = {}) {
+  const t = (v) => (typeof v === 'string' ? v.trim() : '');
+  const user = t(env.SMTP_USER);
+  const pass = t(env.SMTP_PASS);
+  const brevoKey = t(env.BREVO_API_KEY);
+  const mailFrom = t(env.MAIL_FROM);
+
+  if (user && pass) {
+    const rawPort = t(env.SMTP_PORT);
+    const port = rawPort === '' ? 465 : Number(rawPort);
+    if (!/^\d+$/.test(String(rawPort === '' ? 465 : rawPort)) || !Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error('SMTP_PORT debe ser un entero entre 1 y 65535.');
+    }
+    return {
+      mode: 'smtp',
+      smtp: { host: t(env.SMTP_HOST) || 'smtp.gmail.com', port, secure: port === 465, user, pass },
+      from: mailFrom || user,
+    };
+  }
+  if (brevoKey && mailFrom) return { mode: 'brevo', from: mailFrom };
+  return { mode: 'console', from: mailFrom };
 }
+
+const MAIL = resolveMailConfig(process.env);
+const MAIL_MODE = MAIL.mode;
+const SMTP = MAIL.smtp || null;
+const BREVO_API_KEY = (process.env.BREVO_API_KEY || '').trim();
+const MAIL_FROM = MAIL.from;
+const mailConfigured = MAIL_MODE !== 'console';
+if (isProd && !mailConfigured) {
+  throw new Error(
+    'No hay correo configurado en producción: definí SMTP_USER y SMTP_PASS (Gmail con contraseña de aplicación) ' +
+      'o BREVO_API_KEY y MAIL_FROM. Sin eso no se pueden enviar los códigos.'
+  );
+}
+console.log(
+  '[CONFIG] Mail: ' +
+    (MAIL_MODE === 'smtp' ? `smtp (${SMTP.host}:${SMTP.port})` : MAIL_MODE === 'brevo' ? 'brevo' : 'consola')
+);
 
 // Pura: valida y normaliza PUBLIC_URL (base de las URLs de fotos). Nunca se deriva de headers.
 function parsePublicUrl(raw, { isProd, port }) {
@@ -62,5 +96,8 @@ module.exports = {
   JWT_SECRET,
   BREVO_API_KEY,
   MAIL_FROM,
+  MAIL_MODE,
+  SMTP,
+  resolveMailConfig,
   mailConfigured,
 };
