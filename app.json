@@ -28,6 +28,15 @@
           "photosPermission": "Hallado usa tus fotos para elegir tu foto de perfil.",
           "cameraPermission": "Hallado usa la cámara para sacar tu foto de perfil."
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#F2F2F0",
+          "resizeMode": "contain"
+        }
       ]
     ]
   }

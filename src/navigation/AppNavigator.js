@@ -1,7 +1,7 @@
-import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 import LockScreen from '../screens/auth/LockScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -19,13 +19,7 @@ const Stack = createNativeStackNavigator();
 export default function AppNavigator() {
   const { isLoggedIn, loading, locked } = useAuth();
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <NavigationContainer>
