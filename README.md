@@ -2,8 +2,9 @@
 
 App móvil de la materia Desarrollo de Aplicaciones (UADE), hecha con React Native + Expo (JavaScript).
 
-Esta etapa incluye **Autenticación** y **Perfil y reputación**. Todavía no hay backend:
-la app usa una **API simulada (mock)** que se reemplaza fácil por la API REST real.
+Esta etapa incluye **Autenticación** y **Perfil y reputación**. El backend está en [`backend/`](backend/README.md)
+(Express + PostgreSQL). Por defecto la app sigue usando una **API simulada (mock)**;
+para probar contra el backend real, ver [Probar contra el backend real](#probar-contra-el-backend-real).
 
 ## Integrantes
 - Marco Federico Teufel
@@ -94,6 +95,32 @@ Usuarios de ejemplo (contraseña de todos: `hallado123`):
 - **Perfiles públicos**: al final de "Mi perfil" hay una lista de usuarios de ejemplo.
 - **Reiniciar datos del mock**: borrar los datos de Expo Go (Ajustes de Android → Apps → Expo Go → Almacenamiento) o reinstalarlo.
 
+## Probar contra el backend real
+
+Pasos para Android con Expo Go por USB.
+
+1. Levantá el backend. Ver [`backend/README.md`](backend/README.md) (base de datos, `.env`, `npm run migrate`, `npm run seed`).
+   Dejá `npm start` corriendo en `backend/`.
+2. Conectá el celular por USB con "Depuración USB" activada. Verificá con `adb devices`.
+3. Redirigí los puertos del celular a la PC:
+   ```bash
+   adb reverse tcp:3000 tcp:3000
+   adb reverse tcp:8081 tcp:8082
+   ```
+4. Iniciá Expo apuntando al backend real:
+   ```bash
+   EXPO_PUBLIC_USE_MOCK=false EXPO_PUBLIC_API_URL=http://localhost:3000 npx expo start --port 8082 -c
+   ```
+5. Abrí la app en el celular.
+
+Notas:
+- Sin `EXPO_PUBLIC_USE_MOCK=false` la app usa el **mock**. Es el valor por defecto.
+- El código de verificación **no aparece en pantalla**. Mirá la consola del backend (`[MAIL DEV] código ...`).
+  Esto pasa mientras no haya Brevo configurado.
+- Las cuentas del mock del teléfono **no existen** en el backend. Registrate de nuevo, o usá las del seed
+  (`lucia@hallado.com`, `martin@hallado.com`, `carlos@hallado.com`, `sofia@hallado.com`, contraseña `hallado123`).
+- Expo Go y la app nativa tienen **almacenamiento separado**. Los usuarios de una no aparecen en la otra.
+
 ## Estructura
 
 ```
@@ -120,11 +147,14 @@ Las pantallas **nunca** tocan datos directamente: siempre llaman a funciones de 
 
 ## Pasar del mock a la API real
 
-1. Implementar los endpoints de [`API_CONTRACT.md`](API_CONTRACT.md).
-2. En `src/config.js`: `USE_MOCK = false` y `API_URL` con la URL del back.
+1. El backend ya implementa los endpoints de [`API_CONTRACT.md`](API_CONTRACT.md).
+2. Usar `EXPO_PUBLIC_USE_MOCK=false` y `EXPO_PUBLIC_API_URL` con la URL del back (ver [Probar contra el backend real](#probar-contra-el-backend-real)).
    - Emulador Android: `http://10.0.2.2:3000`.
    - Celular físico: la IP de la PC en la red (ej. `http://192.168.1.15:3000`).
-3. Borrar `src/api/mock/` y `src/constants/sampleUsers.js`.
+3. Cuando el mock ya no haga falta: cambiar el valor por defecto de `USE_MOCK` en `src/config.js` a `false`.
+   Recién después se puede borrar `src/api/mock/` y `src/constants/sampleUsers.js`, quitando antes los
+   `import * as mock` y las ramas `USE_MOCK ? ... : ...` de `src/api/authApi.js` y `src/api/userApi.js`.
+   Si se borra la carpeta sin hacer eso, la app no compila.
 
 ## Reputación e insignias
 

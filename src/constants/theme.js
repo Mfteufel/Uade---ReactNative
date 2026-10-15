@@ -6,6 +6,7 @@ export const colors = {
   muted: '#6B7280',
   border: '#D1D5DB',
   error: '#C62828',
+  splash: '#F2F2F0', // fondo del ícono y de la pantalla de carga
 };
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
