@@ -19,6 +19,7 @@ Ver también: [`backend/README.md`](backend/README.md) para correrlo.
 - **Rutas con token**: todo `/users/*`. Mandan el header `Authorization: Bearer <accessToken>`.
 - **Token vencido o inválido** en una ruta con token: `401` con `Sesión inválida. Volvé a iniciar sesión.`
 - **accessToken**: JWT, vence a los **15 minutos**.
+  - La app, ante un 401 en una ruta fuera de `/auth/`, renueva el token y reintenta una vez.
 - **refreshToken**: vence a los **30 días**. Se **rota** en cada `POST /auth/refresh`:
   - El refresh token usado queda inválido. Devuelve un par nuevo.
   - Si se reusa uno viejo dentro de los **10 s** de la rotación, solo falla ese pedido.

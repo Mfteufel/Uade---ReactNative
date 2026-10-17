@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as authApi from '../api/authApi';
-import { setAccessToken } from '../api/tokenStore';
+import { setAccessToken, setRefreshHandler } from '../api/tokenStore';
 import { authenticate, getBiometricStatus } from '../utils/biometrics';
 
 const AuthContext = createContext(null);
@@ -29,6 +29,24 @@ export function AuthProvider({ children }) {
     setLocked(false);
     setUser(null);
   }, []);
+
+  // Renueva el access token cuando client.js recibe un 401. Devuelve true si renovó.
+  const renewSession = useCallback(async () => {
+    const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
+    if (!refreshToken) return false;
+    try {
+      await startSession(await authApi.refreshSession(refreshToken));
+      return true;
+    } catch (e) {
+      if (e.status === 401) await endSession(); // la sesión murió: vuelve al login
+      return false;
+    }
+  }, [startSession, endSession]);
+
+  useEffect(() => {
+    setRefreshHandler(renewSession);
+    return () => setRefreshHandler(null);
+  }, [renewSession]);
 
   // Al abrir la app: si hay refresh token guardado, se renueva la sesión.
   useEffect(() => {
