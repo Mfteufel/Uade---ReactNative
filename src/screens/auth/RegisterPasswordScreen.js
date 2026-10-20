@@ -3,8 +3,8 @@ import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
-import { setRegisterPassword } from '../../api/authApi';
-import { getErrorMessage } from '../../api/errors';
+import { setRegisterPassword } from '../../services/authApi';
+import { getErrorMessage } from '../../services/errors';
 import { validatePassword, validateConfirm } from '../../utils/validators';
 
 export default function RegisterPasswordScreen({ route }) {

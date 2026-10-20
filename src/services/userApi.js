@@ -1,13 +1,12 @@
 import { Image } from 'react-native';
-import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { USE_MOCK } from '../config';
-import client from './client';
+import api, { unwrap } from './api';
 import * as mock from './mock/mockUsers';
 
-export const getMe = () => (USE_MOCK ? mock.getMe() : client.get('/users/me'));
+export const getMe = () => (USE_MOCK ? mock.getMe() : api.get('/users/me').then(unwrap));
 
-export const updateMe = (fields) => (USE_MOCK ? mock.updateMe(fields) : client.put('/users/me', fields));
+export const updateMe = (fields) => (USE_MOCK ? mock.updateMe(fields) : api.put('/users/me', fields).then(unwrap));
 
 const MAX_SIDE = 1024; // el servidor la achica a 512; con 1024 sobra y sube en un instante
 
@@ -37,16 +36,16 @@ export const uploadPhoto = async (uri) => {
   } catch {
     // Si no se pudo achicar, probamos con la original: el servidor avisa si no sirve.
   }
-  // El fetch de Expo no acepta el formato { uri, name, type } de React Native: la parte del formulario
-  // tiene que ser un File de expo-file-system (implementa Blob).
+  // Axios en React Native usa XMLHttpRequest: la parte del formulario va como { uri, name, type }.
+  // No se setea Content-Type a mano: así se arma el boundary del multipart.
   const form = new FormData();
-  form.append('photo', new File(fileUri));
-  return client.post('/users/me/photo', form);
+  form.append('photo', { uri: fileUri, name: 'photo.jpg', type: 'image/jpeg' });
+  return api.post('/users/me/photo', form).then(unwrap);
 };
 
 // Datos que ve otra persona: sin teléfono ni historial.
 export const getPublicProfile = (id) =>
-  USE_MOCK ? mock.getPublicProfile(id) : client.get(`/users/${id}/public`);
+  USE_MOCK ? mock.getPublicProfile(id) : api.get(`/users/${id}/public`).then(unwrap);
 
 export const getReputation = (id) =>
-  USE_MOCK ? mock.getReputation(id) : client.get(`/users/${id}/reputation`);
+  USE_MOCK ? mock.getReputation(id) : api.get(`/users/${id}/reputation`).then(unwrap);

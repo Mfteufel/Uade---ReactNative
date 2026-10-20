@@ -3,8 +3,8 @@ import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import useCountdown from '../../hooks/useCountdown';
-import { requestRegisterOtp, verifyRegisterOtp } from '../../api/authApi';
-import { getErrorMessage } from '../../api/errors';
+import { requestRegisterOtp, verifyRegisterOtp } from '../../services/authApi';
+import { getErrorMessage } from '../../services/errors';
 import { validateOtp } from '../../utils/validators';
 import { showDevOtp } from '../../utils/devOtp';
 

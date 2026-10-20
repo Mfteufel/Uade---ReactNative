@@ -2,8 +2,8 @@ import { useState } from 'react';
 import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
-import { requestRegisterOtp } from '../../api/authApi';
-import { getErrorMessage } from '../../api/errors';
+import { requestRegisterOtp } from '../../services/authApi';
+import { getErrorMessage } from '../../services/errors';
 import { validateEmail } from '../../utils/validators';
 import { showDevOtp } from '../../utils/devOtp';
 
