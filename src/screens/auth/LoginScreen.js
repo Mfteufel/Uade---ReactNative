@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
-import { getErrorMessage } from '../../api/errors';
+import { getErrorMessage } from '../../services/errors';
 import { validateEmail } from '../../utils/validators';
+import { spacing } from '../../constants/theme';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
@@ -52,9 +53,13 @@ export default function LoginScreen({ navigation }) {
         placeholder="Tu contraseña"
       />
       <Button title="Ingresar" onPress={onSubmit} loading={loading} />
-      <View style={{ height: 8 }} />
+      <View style={styles.spacer} />
       <Button variant="link" title="Olvidé mi contraseña" onPress={() => navigation.navigate('ForgotPassword')} />
       <Button variant="link" title="Crear cuenta" onPress={() => navigation.navigate('RegisterEmail')} />
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  spacer: { height: spacing.sm },
+});

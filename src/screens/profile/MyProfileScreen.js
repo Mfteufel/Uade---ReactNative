@@ -1,13 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Avatar from '../../components/Avatar';
 import Button from '../../components/Button';
-import { useAuth } from '../../context/AuthContext';
-import { getMe, getReputation } from '../../api/userApi';
+import useMyProfile from '../../hooks/useMyProfile';
 import BadgeList from '../../components/BadgeList';
 import ReputationCard from '../../components/ReputationCard';
 import { SAMPLE_USERS } from '../../constants/sampleUsers';
-import { getErrorMessage } from '../../api/errors';
 import { colors, spacing } from '../../constants/theme';
 
 function Field({ label, value }) {
@@ -20,28 +17,7 @@ function Field({ label, value }) {
 }
 
 export default function MyProfileScreen({ navigation }) {
-  const { user, setUser } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [reputation, setReputation] = useState(null);
-  const [error, setError] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const me = await getMe();
-      setUser(me);
-      setReputation(await getReputation(me.id));
-    } catch (e) {
-      setError(getErrorMessage(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [setUser]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { user, loading, reputation, error, load } = useMyProfile();
 
   if (loading && !user) return <ActivityIndicator style={styles.center} size="large" />;
 

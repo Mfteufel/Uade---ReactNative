@@ -13,9 +13,9 @@ export default function LockScreen() {
   const tryUnlock = useCallback(async () => {
     setLoading(true);
     setError('');
-    const ok = await unlock();
+    const { ok, message } = await unlock();
     if (!ok) {
-      setError('No se pudo desbloquear. Probá de nuevo o ingresá con tu contraseña.');
+      setError(message); // vacío si el usuario solo canceló
       setLoading(false);
     }
   }, [unlock]);
@@ -23,8 +23,7 @@ export default function LockScreen() {
   // Pide la huella automáticamente al abrir
   useEffect(() => {
     tryUnlock();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tryUnlock]);
 
   return (
     <View style={styles.container}>

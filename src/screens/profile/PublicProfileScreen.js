@@ -4,8 +4,8 @@ import Avatar from '../../components/Avatar';
 import BadgeList from '../../components/BadgeList';
 import Button from '../../components/Button';
 import ReputationCard from '../../components/ReputationCard';
-import { getPublicProfile } from '../../api/userApi';
-import { getErrorMessage } from '../../api/errors';
+import { getPublicProfile } from '../../services/userApi';
+import { getErrorMessage } from '../../services/errors';
 import { formatMemberSince } from '../../utils/memberSince';
 import { colors, spacing } from '../../constants/theme';
 
