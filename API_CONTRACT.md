@@ -331,6 +331,14 @@ Sin token. 200: `{ "status": "ok" }`.
 - **Reclamos**: cuando existan, el back debe devolver el teléfono de la otra parte
   **solo** si el reclamo está `accepted`, `phoneVisibleOnClaim` es `true` y hay teléfono cargado.
   La app tiene la misma regla en `src/utils/canShowPhone.js`, pero la decisión real tiene que tomarla el servidor.
+- **Esquema de base ya creado, API pendiente**: las migraciones 004 a 008 (probadas solo en una rama de pruebas, no en producción)
+  fijan estos estados exactos. Publicaciones: `open`, `in_claim`, `resolved`, `expired`. Reclamos: `pending`, `accepted`, `rejected`, `expired`
+  (sin `cancelled`). Puntos de encuentro: `proposed`, `accepted`, `counter_proposed`. Tipos: publicación `lost`/`found`; reclamo `mine`/`found`.
+  Detalle y reglas en [`backend/README.md`](backend/README.md), sección "Migraciones y esquema".
+- **Reglas a cargo de la API** (la base no las asegura): el reclamo debe estar `accepted` para proponer un punto de encuentro y quien propone
+  es una de las dos partes; se puede valorar hasta 7 días después de la devolución; el reclamo vence a las 48 h y la publicación a los 30 días
+  (lo fija el endpoint); `verification_answer` y `exact_address` son privadas; `client_id` lo genera la app (idempotencia offline).
+- **Seguidas**: la novedad es `publications.status_changed_at > follows.seen_at`.
 - **Historial de devoluciones**: hoy `completedReturns` es solo un contador.
 
 ## Datos de ejemplo (seed)
