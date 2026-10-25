@@ -5,6 +5,9 @@ const cors = require('cors');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const photosRouter = require('./routes/photos');
+const { router: claimsRouter, publicationClaimsRouter } = require('./routes/claims');
+const neighborhoodsRouter = require('./routes/neighborhoods');
+const { expireDueClaims } = require('./services/claims');
 const { authLimiter, unauthLimiter, photosLimiter } = require('./middleware/rateLimit');
 const { notFound, errorHandler } = require('./middleware/errors');
 
@@ -37,6 +40,9 @@ app.get('/health', (req, res) => {
 app.use('/auth', authLimiter, authRouter);
 app.use('/users', unauthLimiter, usersRouter);
 app.use('/photos', photosLimiter, photosRouter);
+app.use('/reclamos', unauthLimiter, claimsRouter);
+app.use('/publicaciones/:publicationId/reclamos', unauthLimiter, publicationClaimsRouter);
+app.use('/barrios', unauthLimiter, neighborhoodsRouter);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -46,6 +52,12 @@ if (require.main === module) {
     console.log(`Hallado backend escuchando en puerto ${PORT}`);
   });
   server.requestTimeout = 60_000;
+
+  // Los reclamos pendientes vencen a las 48 h aunque nadie los consulte: además de aplicar el vencimiento
+  // en cada lectura, el servidor lo barre cada tanto con su propio reloj.
+  const sweepClaims = () => expireDueClaims().catch((e) => console.error('[claims] no se pudo barrer vencimientos:', e.code || e.message));
+  sweepClaims();
+  setInterval(sweepClaims, 5 * 60 * 1000).unref();
 }
 
 module.exports = app;

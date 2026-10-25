@@ -13,6 +13,9 @@ import MyProfileScreen from '../screens/profile/MyProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PublicProfileScreen from '../screens/profile/PublicProfileScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
+import ClaimFormScreen from '../screens/claims/ClaimFormScreen';
+import MyClaimsScreen from '../screens/claims/MyClaimsScreen';
+import ClaimDetailScreen from '../screens/claims/ClaimDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +35,10 @@ export default function AppNavigator() {
             <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar perfil' }} />
             <Stack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Perfil público' }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configuración' }} />
+            <Stack.Screen name="MyClaims" component={MyClaimsScreen} options={{ title: 'Mis reclamos' }} />
+            {/* Params: { publicationId }. El detalle de publicación (punto 4) navega acá desde "Es mío" / "Lo encontré". */}
+            <Stack.Screen name="ClaimForm" component={ClaimFormScreen} options={{ title: 'Reclamar' }} />
+            <Stack.Screen name="ClaimDetail" component={ClaimDetailScreen} options={{ title: 'Reclamo' }} />
           </>
         ) : (
           <>

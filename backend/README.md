@@ -148,7 +148,10 @@ Existe un proyecto de Neon aparte de producción (`Hallados-dev`) para que el eq
 
 ### Lo que todavía no está hecho
 
-- La API (rutas y servicios) de publicaciones, reclamos, puntos de encuentro, devoluciones, valoraciones por devolución, agradecimientos, alertas, seguidas y búsquedas: hoy solo existe el esquema.
+- Ya tienen API: **reclamos** (punto 7, ver `API_CONTRACT.md`, sección "Reclamos"), más `GET /barrios` y la foto de reclamo (`POST /reclamos/foto`).
+- La API (rutas y servicios) de publicaciones, puntos de encuentro, devoluciones, valoraciones por devolución, agradecimientos, alertas, seguidas y búsquedas: hoy solo existe el esquema.
+- Los reclamos vencen a las 48 h con el reloj del servidor: `expireDueClaims` (`services/claims.js`) corre antes de cada lectura/decisión y cada 5 min desde `index.js`.
+  Las rutas de publicaciones, cuando existan, deberían llamarla antes de leer estados si muestran reclamos.
 - Las migraciones 002 a 008 **no se aplicaron a producción**, que tiene solo la 001.
 - La pregunta y respuesta de verificación viven en `publications` (`verification_question`, `verification_answer`), no en una tabla aparte.
 
@@ -253,11 +256,12 @@ backend/
     index.js           app Express, montaje de rutas y rate limits
     config.js          lectura y validación de variables de entorno
     db.js              pool de PostgreSQL, query y transacciones
-    routes/            auth.js, users.js, photos.js
+    routes/            auth.js, users.js, photos.js, claims.js, neighborhoods.js
     middleware/        auth (token), rateLimit, upload (fotos), errors
     services/          tokens, session, registration, passwordReset,
                        otp, otpStore, mailer, passwordRules,
-                       profile, photos, photoUrl, reputation, publicProfile
+                       profile, photos, photoUrl, reputation, publicProfile,
+                       claims
   migrations/          001_init.sql ... 008_alerts_follows_searches.sql (esquema)
     rollback/          00N_*.down.sql (reversión manual, 002 a 008)
   scripts/

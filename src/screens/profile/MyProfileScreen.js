@@ -52,6 +52,7 @@ export default function MyProfileScreen({ navigation }) {
 
       <View style={styles.actions}>
         <Button title="Editar perfil" onPress={() => navigation.navigate('EditProfile')} />
+        <Button variant="link" title="Mis reclamos" onPress={() => navigation.navigate('MyClaims')} />
         <Button variant="link" title="Ver cómo me ven otros" onPress={() => navigation.navigate('PublicProfile', { userId: user.id })} />
         <Button variant="link" title="Configuración" onPress={() => navigation.navigate('Settings')} />
       </View>
