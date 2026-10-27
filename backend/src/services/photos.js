@@ -1,5 +1,5 @@
 const sharp = require('sharp');
-const { withTransaction } = require('../db');
+const { query, withTransaction } = require('../db');
 const { HttpError } = require('../middleware/errors');
 const { toUser } = require('./tokens');
 
@@ -69,4 +69,16 @@ async function savePhoto(userId, buf) {
   });
 }
 
-module.exports = { processAvatar, savePhoto };
+// Foto que acredita un reclamo (kind = 'claim'). Se sube antes de crear el reclamo y el reclamo la referencia con photoId.
+// Mismo procesado que el avatar: JPEG de 512 px máximo y sin metadatos (se quita el GPS).
+async function saveClaimPhoto(userId, buf) {
+  if (!buf) throw new HttpError(422, 'Elegí una foto para subir.');
+  const jpeg = await processAvatar(buf);
+  const ins = await query(
+    `INSERT INTO photos (user_id, data, mime, kind) VALUES ($1, $2, 'image/jpeg', 'claim') RETURNING id`,
+    [userId, jpeg]
+  );
+  return { photoId: ins.rows[0].id };
+}
+
+module.exports = { processAvatar, savePhoto, saveClaimPhoto };
