@@ -58,3 +58,20 @@ export const rejectClaim = async (claimId) => {
   requireRealApi();
   return api.post(`/reclamos/${claimId}/rechazar`).then(unwrap);
 };
+
+// Punto de encuentro de un reclamo aceptado (punto 8). Las tres devuelven el estado real del servidor.
+export const getMeetingPoint = async (claimId) => {
+  requireRealApi();
+  return api.get(`/reclamos/${claimId}/punto-encuentro`).then(unwrap);
+};
+
+// Sirve para el primer lugar (quien tiene el objeto) y para sugerir otro (la contraparte).
+export const proposeMeetingPoint = async (claimId, fields) => {
+  requireRealApi();
+  return api.post(`/reclamos/${claimId}/punto-encuentro`, fields).then(unwrap);
+};
+
+export const acceptMeetingPoint = async (meetingPointId) => {
+  requireRealApi();
+  return api.post(`/puntos-encuentro/${meetingPointId}/aceptar`).then(unwrap);
+};

@@ -89,6 +89,13 @@ export default function ClaimDetailScreen({ route, navigation }) {
         </Text>
       ) : null}
 
+      {/* La coordinación del encuentro solo existe con el reclamo aceptado; el servidor lo vuelve a validar. */}
+      {claim.status === 'accepted' ? (
+        <View style={styles.actions}>
+          <Button title="Coordinar punto de encuentro" onPress={() => navigation.navigate('MeetingPoint', { claimId: claim.id })} />
+        </View>
+      ) : null}
+
       {isPublisher && claim.status === 'pending' ? (
         <View style={styles.actions}>
           <Button
