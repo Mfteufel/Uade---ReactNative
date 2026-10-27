@@ -9,6 +9,8 @@ import RegisterEmailScreen from '../screens/auth/RegisterEmailScreen';
 import RegisterOtpScreen from '../screens/auth/RegisterOtpScreen';
 import RegisterPasswordScreen from '../screens/auth/RegisterPasswordScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import SearchScreen from '../screens/search/SearchScreen';
+import ResultsScreen from '../screens/search/ResultsScreen';
 import MyProfileScreen from '../screens/profile/MyProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PublicProfileScreen from '../screens/profile/PublicProfileScreen';
@@ -31,6 +33,8 @@ export default function AppNavigator() {
           <Stack.Screen name="Lock" component={LockScreen} options={{ headerShown: false }} />
         ) : isLoggedIn ? (
           <>
+            <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Hallado' }} />
+            <Stack.Screen name="Results" component={ResultsScreen} options={{ title: 'Resultados' }} />
             <Stack.Screen name="MyProfile" component={MyProfileScreen} options={{ title: 'Mi perfil' }} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar perfil' }} />
             <Stack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Perfil público' }} />

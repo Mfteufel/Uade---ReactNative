@@ -10,13 +10,14 @@ router.get('/:id', async (req, res, next) => {
   try {
     const id = String(req.params.id).toLowerCase();
     if (!UUID_RE.test(id)) throw new HttpError(404, NOT_FOUND);
-    // Solo la foto vigente de algún usuario o la foto adjunta a un reclamo.
+    // Solo la foto vigente de algún usuario, la adjunta a un reclamo o la de una publicación.
     // Las fotos de reclamo no tienen otra protección que su UUID: la app solo se lo da a las dos partes del reclamo.
     const r = await query(
       `SELECT p.data FROM photos p
         WHERE p.id = $1
           AND (EXISTS (SELECT 1 FROM users u WHERE u.photo_id = p.id)
-               OR EXISTS (SELECT 1 FROM claims c WHERE c.photo_id = p.id))`,
+               OR EXISTS (SELECT 1 FROM claims c WHERE c.photo_id = p.id)
+               OR EXISTS (SELECT 1 FROM publication_photos pp WHERE pp.photo_id = p.id))`,
       [id]
     );
     if (r.rowCount === 0) throw new HttpError(404, NOT_FOUND);
