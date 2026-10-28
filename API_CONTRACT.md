@@ -329,13 +329,14 @@ Reglas (las aplica el servidor; la app solo las muestra):
 - **Vencimiento a las 48 h**: `expires_at` lo fija el servidor al crear. Un reclamo `pending` pasa a `expired` con el reloj del servidor:
   antes de cada lectura o decisión y con un barrido cada 5 min (`expireDueClaims`). No depende de la app ni del teléfono.
 - **Aceptar** → reclamo `accepted`, publicación `in_claim` y `status_changed_at = now()`. **Rechazar** no toca la publicación.
-  Los demás reclamos `pending` de esa publicación no cambian de estado (la guía no define una regla): el publicador puede rechazarlos o vencen a las 48 h.
+  En la misma transacción, los demás reclamos `pending` de esa publicación pasan a `rejected` (con `decided_at`): la publicación ya no admite otro
+  reclamo aceptado, así nadie queda en "Pendiente" durante 48 h. Siguen contando como intento de quien los envió.
 - Solo el publicador acepta o rechaza, y solo un reclamo `pending` que no venció.
 - **Privacidad**: la respuesta de verificación correcta **nunca** sale del servidor. El publicador ve la respuesta que escribió el solicitante y
   `answerMatches` (comparación sin mayúsculas, acentos ni espacios de más); el solicitante no ve ninguna de las dos.
   El teléfono de la otra parte solo viene si el reclamo está `accepted`, esa persona dejó `phoneVisibleOnClaim` en `true` y cargó un teléfono.
 
-**Claim** (lo que devuelven las rutas de reclamos; `GET /reclamos/:id` suma `attemptsLeft` si quien consulta es el solicitante)
+**Claim** (lo que devuelven las rutas de reclamos; `GET /reclamos/:id` suma `attemptsLeft` y `maxAttempts` si quien consulta es el solicitante)
 ```json
 {
   "id": "c_3f2c1a9e0b7d4c1e9a8f2d6b",
@@ -358,7 +359,7 @@ Reglas (las aplica el servidor; la app solo las muestra):
 - `role`: `claimer` (lo envié yo) o `publisher` (lo recibí).
 - `verificationAnswer` y `answerMatches` solo aparecen para el publicador y solo en reclamos `mine`.
 - `foundNeighborhood`: `{ "id": "palermo", "name": "Palermo" }` en los reclamos `found`, si no `null`.
-- `photoUri`: foto del reclamo (se sirve con `GET /photos/:id`) o `null`.
+- `photoUri`: foto del reclamo o `null`. Se sirve con `GET /photos/:id` **con token** y solo a las dos partes del reclamo.
 
 ### GET `/publicaciones/:id/reclamos/formulario`
 Lo que necesita el formulario antes de enviar. **Ruta mínima agregada para el punto 7** (todavía no existe el detalle de publicación del punto 4).
@@ -385,7 +386,7 @@ Errores: 404 `Publicación no encontrada.`
 ### POST `/reclamos/foto`
 Sube la foto que acredita un reclamo. Se llama **antes** de crear el reclamo, que la referencia con `photoId`.
 Mismas reglas que `POST /users/me/photo` (campo `photo`, JPEG/PNG/WEBP, 5 MB, se re-codifica a JPEG de 512 px sin metadatos,
-una subida a la vez por usuario, 10 por hora). La foto queda con `kind = 'claim'`. Una foto subida y nunca usada en un reclamo queda sin referencia.
+una subida a la vez por usuario, 10 por hora). La foto queda con `kind = 'claim'`. Una foto subida y nunca usada en un reclamo queda sin referencia. El servidor borra las fotos `kind = 'claim'` que ningún reclamo usa pasadas 24 h (barrido al iniciar y cada hora); si un reclamo las referencia después, responde 422 `La foto no es válida. Subila de nuevo.`
 
 201: `{ "photoId": "3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90" }`
 
@@ -446,12 +447,12 @@ Catálogo de barrios para los formularios. **Ruta mínima agregada para "Lo enco
 ## Complementarios
 
 ### GET `/photos/:id`
-Devuelve una foto. **No requiere token.** La usa la app para mostrar `photoUri` (fotos de perfil y fotos de reclamos).
+Devuelve una foto.
 
 - 200: cuerpo binario, `Content-Type: image/jpeg`.
-- Solo sirve la **foto vigente** de algún usuario o una foto **adjunta a un reclamo**. Una foto de perfil reemplazada da 404.
-- Las fotos de reclamo no tienen otra protección que su UUID (imposible de adivinar): solo se lo da `Claim.photoUri` a las dos partes del reclamo.
-- Caché: `Cache-Control: public, max-age=31536000, immutable`. Se puede cachear por un año.
+- **Foto de perfil vigente**: no requiere token y se puede cachear (`Cache-Control: public, max-age=31536000, immutable`). Una foto de perfil reemplazada da 404.
+- **Foto de un reclamo**: requiere `Authorization: Bearer <token>` y solo la reciben quien reclamó y quien publicó. Se responde con
+  `Cache-Control: private, no-store`. Sin token válido da 401; con el token de otra persona da 404 (igual que si no existiera).
 - 404 `Foto no encontrada.` (también si el `:id` no es un UUID).
 - Rate limit: 1000 pedidos / 15 min por IP.
 

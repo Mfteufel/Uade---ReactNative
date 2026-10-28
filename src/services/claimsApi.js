@@ -1,5 +1,6 @@
 import { USE_MOCK } from '../config';
 import api, { unwrap } from './api';
+import { getAccessToken } from './tokenStore';
 import { shrinkForUpload } from './userApi';
 
 // Los reclamos solo existen en el backend real (no hay mock): sin API real no hay con qué validar
@@ -8,10 +9,17 @@ const requireRealApi = () => {
   if (USE_MOCK) throw new Error('Los reclamos necesitan el backend real (EXPO_PUBLIC_USE_MOCK=false).');
 };
 
+// Los ids se codifican al armar la URL para que un valor raro no cambie la ruta pedida.
+const enc = encodeURIComponent;
+
+// Las fotos de reclamo son privadas: el servidor las entrega solo con el token de una de las dos partes.
+// Se lee el token en el momento de mostrar la imagen (no es un hook, solo lee el almacén en memoria).
+export const claimPhotoSource = (uri) => ({ uri, headers: { Authorization: `Bearer ${getAccessToken()}` } });
+
 // Datos del formulario: tipo de reclamo, pregunta de verificación e intentos restantes.
 export const getClaimForm = async (publicationId) => {
   requireRealApi();
-  return api.get(`/publicaciones/${publicationId}/reclamos/formulario`).then(unwrap);
+  return api.get(`/publicaciones/${enc(publicationId)}/reclamos/formulario`).then(unwrap);
 };
 
 // La foto se sube primero y el reclamo la referencia con el photoId que devuelve el servidor.
@@ -30,7 +38,7 @@ export const uploadClaimPhoto = async (uri) => {
 
 export const createClaim = async (publicationId, fields) => {
   requireRealApi();
-  return api.post(`/publicaciones/${publicationId}/reclamos`, fields).then(unwrap);
+  return api.post(`/publicaciones/${enc(publicationId)}/reclamos`, fields).then(unwrap);
 };
 
 export const getSentClaims = async () => {
@@ -45,16 +53,16 @@ export const getReceivedClaims = async () => {
 
 export const getClaim = async (claimId) => {
   requireRealApi();
-  return api.get(`/reclamos/${claimId}`).then(unwrap);
+  return api.get(`/reclamos/${enc(claimId)}`).then(unwrap);
 };
 
 // Devuelven el reclamo con el estado que quedó en el servidor.
 export const acceptClaim = async (claimId) => {
   requireRealApi();
-  return api.post(`/reclamos/${claimId}/aceptar`).then(unwrap);
+  return api.post(`/reclamos/${enc(claimId)}/aceptar`).then(unwrap);
 };
 
 export const rejectClaim = async (claimId) => {
   requireRealApi();
-  return api.post(`/reclamos/${claimId}/rechazar`).then(unwrap);
+  return api.post(`/reclamos/${enc(claimId)}/rechazar`).then(unwrap);
 };

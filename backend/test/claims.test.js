@@ -21,6 +21,9 @@ test('el tipo de reclamo sale del tipo de publicación', () => {
 test('la respuesta se compara sin mayúsculas, acentos ni espacios de más', () => {
   assert.equal(normalizeAnswer('  Azúl   CLARO '), 'azul claro');
   assert.ok(answersMatch('azul claro', 'Azúl Claro'));
+  assert.ok(answersMatch('rojo.', 'Rojo'));
+  assert.ok(answersMatch('¡Azul, claro!', 'azul claro'));
+  assert.ok(!answersMatch('...', '...'));
   assert.ok(!answersMatch('rojo', 'azul'));
   assert.ok(!answersMatch('', ''));
   assert.ok(!answersMatch(null, 'azul'));

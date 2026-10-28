@@ -64,7 +64,9 @@ async function savePhoto(userId, buf) {
     );
     const photoId = ins.rows[0].id;
     const upd = await c.query('UPDATE users SET photo_id = $2 WHERE id = $1 RETURNING *', [userId, photoId]);
-    await c.query('DELETE FROM photos WHERE user_id = $1 AND id <> $2', [userId, photoId]);
+    // Solo se borran las fotos de perfil anteriores: las fotos de reclamos (kind = 'claim') pertenecen
+    // al mismo usuario pero siguen referenciadas por sus reclamos y no se pueden tocar al cambiar el avatar.
+    await c.query("DELETE FROM photos WHERE user_id = $1 AND id <> $2 AND kind = 'profile'", [userId, photoId]);
     return toUser(upd.rows[0]);
   });
 }
@@ -81,4 +83,22 @@ async function saveClaimPhoto(userId, buf) {
   return { photoId: ins.rows[0].id };
 }
 
-module.exports = { processAvatar, savePhoto, saveClaimPhoto };
+// Una foto de reclamo se sube antes de crear el reclamo: si la persona abandona el formulario, queda sin usar.
+// El barrido borra las que ningún reclamo referencia pasado este margen (alcanza para completar el formulario).
+const ORPHAN_CLAIM_PHOTO_AGE = '24 hours';
+
+// SKIP LOCKED: si createClaim está validando justo esa foto (la bloquea con FOR UPDATE), la salteamos.
+async function deleteOrphanClaimPhotos() {
+  const r = await query(
+    `WITH due AS (
+       SELECT p.id FROM photos p
+        WHERE p.kind = 'claim' AND p.created_at <= now() - interval '${ORPHAN_CLAIM_PHOTO_AGE}'
+          AND NOT EXISTS (SELECT 1 FROM claims c WHERE c.photo_id = p.id)
+        ORDER BY p.id FOR UPDATE SKIP LOCKED
+     )
+     DELETE FROM photos WHERE id IN (SELECT id FROM due)`
+  );
+  return r.rowCount;
+}
+
+module.exports = { processAvatar, savePhoto, saveClaimPhoto, deleteOrphanClaimPhotos };
