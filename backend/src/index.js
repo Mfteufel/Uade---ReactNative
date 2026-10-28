@@ -11,6 +11,7 @@ const categoriesRouter = require('./routes/categories');
 const searchRouter = require('./routes/search');
 const recentSearchesRouter = require('./routes/recentSearches');
 const { expireDueClaims } = require('./services/claims');
+const { deleteOrphanClaimPhotos } = require('./services/photos');
 const { authLimiter, unauthLimiter, photosLimiter } = require('./middleware/rateLimit');
 const { notFound, errorHandler } = require('./middleware/errors');
 
@@ -64,6 +65,11 @@ if (require.main === module) {
   const sweepClaims = () => expireDueClaims().catch((e) => console.error('[claims] no se pudo barrer vencimientos:', e.code || e.message));
   sweepClaims();
   setInterval(sweepClaims, 5 * 60 * 1000).unref();
+
+  // Las fotos de reclamo que se subieron y nunca se usaron en un reclamo no deben quedar para siempre en la base.
+  const sweepPhotos = () => deleteOrphanClaimPhotos().catch((e) => console.error('[photos] no se pudo barrer fotos sin usar:', e.code || e.message));
+  sweepPhotos();
+  setInterval(sweepPhotos, 60 * 60 * 1000).unref();
 }
 
 module.exports = app;

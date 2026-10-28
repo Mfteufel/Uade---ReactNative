@@ -4,6 +4,7 @@ import Button from '../../components/Button';
 import ClaimStatusBadge from '../../components/ClaimStatusBadge';
 import Field from '../../components/Field';
 import useClaimDetail from '../../hooks/useClaimDetail';
+import { claimPhotoSource } from '../../services/claimsApi';
 import { CLAIM_ROLE_LABEL, CLAIM_TYPE_LABEL } from '../../constants/claims';
 import { colors, spacing } from '../../constants/theme';
 import { formatDateTime } from '../../utils/formatDateTime';
@@ -47,7 +48,7 @@ export default function ClaimDetailScreen({ route, navigation }) {
       <Field label="Enviado" value={formatDateTime(claim.createdAt)} />
       {claim.status === 'expired' ? <Field label="Venció" value={formatDateTime(claim.expiresAt)} /> : null}
       {claim.decidedAt && claim.status !== 'expired' ? <Field label="Resuelto" value={formatDateTime(claim.decidedAt)} /> : null}
-      {claim.role === 'claimer' ? <Field label="Intento" value={`${claim.attemptNumber} de 3`} /> : null}
+      {claim.role === 'claimer' ? <Field label="Intento" value={`${claim.attemptNumber} de ${claim.maxAttempts}`} /> : null}
 
       <View style={styles.person}>
         <Avatar uri={other.photoUri} name={other.name} size={48} />
@@ -61,7 +62,8 @@ export default function ClaimDetailScreen({ route, navigation }) {
 
       {claim.foundNeighborhood ? <Field label="Barrio donde lo encontró" value={claim.foundNeighborhood.name} /> : null}
       {claim.description ? <Field label="Descripción" value={claim.description} /> : null}
-      {claim.photoUri ? <Image source={{ uri: claim.photoUri }} style={styles.photo} /> : null}
+      {/* La foto del reclamo es privada: el servidor la entrega solo con el token de una de las dos partes. */}
+      {claim.photoUri ? <Image source={claimPhotoSource(claim.photoUri)} style={styles.photo} /> : null}
 
       {/* Solo el publicador recibe la respuesta del solicitante y si coincide; la respuesta correcta no sale del servidor. */}
       {isPublisher && claim.type === 'mine' ? (
@@ -81,7 +83,7 @@ export default function ClaimDetailScreen({ route, navigation }) {
           Sin respuesta, este reclamo vence el {formatDateTime(claim.expiresAt)}.
         </Text>
       ) : null}
-      {claim.status === 'rejected' && claim.role === 'claimer' ? (
+      {(claim.status === 'rejected' || claim.status === 'expired') && claim.role === 'claimer' ? (
         <Text style={styles.note}>
           {claim.attemptsLeft > 0
             ? `Te quedan ${claim.attemptsLeft} ${claim.attemptsLeft === 1 ? 'intento' : 'intentos'} para esta publicación.`

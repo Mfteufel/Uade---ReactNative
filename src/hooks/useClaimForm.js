@@ -29,18 +29,30 @@ export default function useClaimForm({ publicationId, onCreated }) {
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false); // evita el doble envío aunque el estado todavía no se haya actualizado
+  const mountedRef = useRef(true); // las respuestas pueden llegar cuando la pantalla ya se cerró
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await getClaimForm(publicationId);
+      if (!mountedRef.current) return;
       setInfo(data);
-      if (data.canClaim && data.claimType === 'found') setNeighborhoods(await getNeighborhoods());
+      if (data.canClaim && data.claimType === 'found') {
+        const list = await getNeighborhoods();
+        if (mountedRef.current) setNeighborhoods(list);
+      }
     } catch (e) {
-      setError(getErrorMessage(e));
+      if (mountedRef.current) setError(getErrorMessage(e));
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [publicationId]);
 
@@ -56,12 +68,13 @@ export default function useClaimForm({ publicationId, onCreated }) {
     setFormError('');
     try {
       const { photoId } = await uploadClaimPhoto(uri);
+      if (!mountedRef.current) return;
       setPhoto({ uri, id: photoId });
       setErrors((prev) => ({ ...prev, photo: undefined }));
     } catch (e) {
-      setFormError(getErrorMessage(e));
+      if (mountedRef.current) setFormError(getErrorMessage(e));
     } finally {
-      setUploading(false);
+      if (mountedRef.current) setUploading(false);
     }
   };
 
@@ -116,18 +129,22 @@ export default function useClaimForm({ publicationId, onCreated }) {
         info.claimType === 'mine'
           ? { verificationAnswer: answer, description, photoId: photo?.id }
           : { photoId: photo.id, foundNeighborhoodId: neighborhood.id, description };
-      onCreated?.(await createClaim(publicationId, body));
+      const claim = await createClaim(publicationId, body);
+      // Si la persona ya salió de la pantalla no la navegamos a ningún lado; el reclamo quedó creado igual.
+      if (mountedRef.current) onCreated?.(claim);
     } catch (e) {
+      if (!mountedRef.current) return;
       setFormError(getErrorMessage(e));
       // Si el servidor cambió las reglas (intentos agotados, publicación cerrada) actualizamos el aviso.
       try {
-        setInfo(await getClaimForm(publicationId));
+        const data = await getClaimForm(publicationId);
+        if (mountedRef.current) setInfo(data);
       } catch {
         // Sin conexión: queda el mensaje de error de arriba.
       }
     } finally {
       sendingRef.current = false;
-      setSending(false);
+      if (mountedRef.current) setSending(false);
     }
   };
 

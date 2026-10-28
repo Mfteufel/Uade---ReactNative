@@ -136,6 +136,28 @@ para poder volver a aplicarla. **Nunca contra producción** sin un backup y sin 
 4. `scripts/seed_demo.js` carga datos de ejemplo del esquema completo: solo inserta (`ON CONFLICT DO NOTHING`), usa ids con prefijo `_seed_`
    (`u_seed_`, `p_seed_`, ...) y **se niega a correr si el host no es el de la rama de pruebas**. Es idempotente.
 
+### Test de integración (reclamos y fotos)
+
+`test/claims.integration.test.js` prueba contra un Postgres real el cambio de avatar con fotos de reclamo, la aceptación que rechaza al resto,
+el límite de 3 intentos, la carrera de pedidos simultáneos, el vencimiento, el barrido de fotos sin usar y `GET /photos/:id`.
+`npm test` lo saltea solo: **no corre si no se definen las dos variables** y nunca usa el `DATABASE_URL` de `backend/.env` (producción).
+
+1. Usá una base **de pruebas** (una rama de Neon propia o un Postgres local), nunca producción ni Hallados-dev, y aplicale las migraciones 001 a 008.
+2. Guardá en `backend/.env.test.local` (ignorado por git):
+   ```
+   DATABASE_URL=<la misma cadena de la base de pruebas, solo para correr migrate>
+   TEST_DATABASE_URL=<cadena de la base de pruebas>
+   TEST_DB_ALLOWED_HOST_PREFIX=<inicio del host, ej. ep-nombre o localhost>
+   ```
+3. Migrar esa base: `node --env-file=.env.test.local scripts/migrate.js` (verificá antes el host, sin imprimir la URL entera).
+4. Correr: `node --env-file=.env.test.local --test test/claims.integration.test.js`.
+
+Los datos llevan el prefijo `u_itest_`/`p_itest_` y se borran al terminar. El caso del barrido ejecuta `deleteOrphanClaimPhotos()`, que borra
+**todas** las fotos de reclamo sin usar de más de 24 h de esa base: por eso solo debe correrse en una base de pruebas.
+
+Alternativa local con Docker: `docker run --rm -d --name hallado-test -p 5433:5432 -e POSTGRES_PASSWORD=test postgres:16`
+(cadena `postgresql://postgres:test@localhost:5433/postgres`, prefijo `localhost`).
+
 ### Base de desarrollo del equipo (Hallados-dev)
 
 Existe un proyecto de Neon aparte de producción (`Hallados-dev`) para que el equipo pruebe endpoints sin riesgo.
