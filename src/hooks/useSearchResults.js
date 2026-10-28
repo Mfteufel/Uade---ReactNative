@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { search } from '../services/searchApi';
-import { toSearchParams } from '../utils/searchCriteria';
+import { search, saveRecentSearch } from '../services/searchApi';
+import { toRecentBody, toSearchParams } from '../utils/searchCriteria';
 import { getErrorMessage } from '../services/errors';
 
 const hasCenter = (f) => (f.lat !== undefined && f.lng !== undefined) || !!f.barrio;
@@ -17,6 +17,7 @@ export default function useSearchResults(initialFilters) {
   const [error, setError] = useState('');
   const requestRef = useRef(0); // número de pedido: una respuesta vieja no pisa a una más nueva
   const busyRef = useRef(false); // evita pedir la misma página dos veces
+  const recentSavedRef = useRef(false); // la búsqueda se guarda una sola vez por pantalla
 
   // mode: 'first' (pantalla nueva o filtros nuevos) | 'refresh' (pull-to-refresh) | 'more' (página siguiente)
   const run = useCallback(async (f, pageNumber, mode) => {
@@ -36,6 +37,11 @@ export default function useSearchResults(initialFilters) {
       });
       setPage(res.page);
       setHasMore(res.hasMore);
+      // Recién con la primera página en 200 se guarda la búsqueda; sin esperar y sin que un fallo afecte los resultados.
+      if (!recentSavedRef.current && mode === 'first') {
+        recentSavedRef.current = true;
+        saveRecentSearch(toRecentBody(initialFilters)).catch(() => {});
+      }
     } catch (e) {
       if (id === requestRef.current) setError(getErrorMessage(e));
     } finally {

@@ -18,12 +18,14 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // "Es mío" solo existe sobre una publicación 'found' y "Lo encontré" sobre una 'lost' (lo asegura también la base).
 const claimTypeFor = (publicationType) => (publicationType === 'found' ? 'mine' : 'found');
 
-// Para comparar la respuesta de verificación sin importar mayúsculas, acentos ni espacios de más.
+// Para comparar la respuesta de verificación sin importar mayúsculas, acentos, puntuación ni espacios de más.
+// Es solo una ayuda para el publicador: la decisión final es suya.
 function normalizeAnswer(text) {
   return String(text ?? '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -151,6 +153,10 @@ function toClaimView(row, userId) {
 
 const newClaimId = () => 'c_' + crypto.randomBytes(12).toString('hex');
 
+// Índices únicos de 005_claims.sql que cortan una carrera al crear o aceptar un reclamo.
+const CREATE_RACE_CONSTRAINTS = ['claims_attempt_key', 'claims_one_active_per_claimer_idx'];
+const ACCEPT_RACE_CONSTRAINT = 'claims_one_accepted_per_publication_idx';
+
 const CLAIM_SELECT = `
   SELECT c.*,
          p.title AS publication_title, p.status AS publication_status,
@@ -173,7 +179,7 @@ const CLAIM_SELECT = `
 async function expireDueClaims() {
   const r = await query(
     `WITH due AS (
-       SELECT id FROM claims WHERE status = 'pending' AND expires_at < now() ORDER BY id FOR UPDATE SKIP LOCKED
+       SELECT id FROM claims WHERE status = 'pending' AND expires_at <= now() ORDER BY id FOR UPDATE SKIP LOCKED
      )
      UPDATE claims SET status = 'expired', decided_at = now()
       WHERE id IN (SELECT id FROM due)`
@@ -242,10 +248,12 @@ async function createClaim(userId, publicationId, body) {
 
       if (input.photoId) {
         // La foto tiene que ser de quien reclama, haber sido subida como foto de reclamo y no estar usada en otro.
+        // FOR UPDATE: mientras se crea el reclamo, el barrido de fotos sin usar (deleteOrphanClaimPhotos) la saltea.
         const photo = await c.query(
           `SELECT 1 FROM photos p
             WHERE p.id = $1 AND p.user_id = $2 AND p.kind = 'claim'
-              AND NOT EXISTS (SELECT 1 FROM claims WHERE photo_id = p.id)`,
+              AND NOT EXISTS (SELECT 1 FROM claims WHERE photo_id = p.id)
+            FOR UPDATE OF p`,
           [input.photoId, userId]
         );
         if (photo.rowCount === 0) throw new HttpError(422, 'La foto no es válida. Subila de nuevo.');
@@ -265,7 +273,8 @@ async function createClaim(userId, publicationId, body) {
     });
   } catch (e) {
     // Red de seguridad: los índices únicos de la base cortan cualquier carrera que se haya escapado.
-    if (e && e.code === '23505') {
+    // Solo se traducen los que significan "ya hay un reclamo en curso"; cualquier otro choque es un error real.
+    if (e && e.code === '23505' && CREATE_RACE_CONSTRAINTS.includes(e.constraint)) {
       throw new HttpError(409, 'Ya tenés un reclamo en curso para esta publicación. Revisá "Mis reclamos".');
     }
     throw e;
@@ -288,6 +297,7 @@ async function getClaim(userId, claimId) {
   if (view.role === 'claimer') {
     const attempts = await getAttempts({ query }, view.publication.id, userId);
     view.attemptsLeft = Math.max(0, MAX_ATTEMPTS - attempts.used);
+    view.maxAttempts = MAX_ATTEMPTS;
   }
   return view;
 }
@@ -330,11 +340,21 @@ async function decideClaim(userId, claimId, decision) {
         }
         // Al aceptar, la publicación pasa a "en reclamo". Rechazar no la toca: sigue abierta.
         await c.query('UPDATE publications SET status = \'in_claim\', status_changed_at = now() WHERE id = $1', [claim.publication_id]);
+        // La publicación ya no admite otro reclamo aceptado: los demás pendientes se rechazan en la misma
+        // transacción. Así nadie queda viendo "Pendiente" durante 48 h ni recibe un 409 al intentar aceptarlos.
+        // Siguen contando como intento de quien reclamó (el límite de 3 incluye los rechazados).
+        await c.query(
+          `UPDATE claims SET status = 'rejected', decided_at = now()
+            WHERE publication_id = $1 AND status = 'pending' AND id <> $2`,
+          [claim.publication_id, claimId]
+        );
       }
       await c.query('UPDATE claims SET status = $2, decided_at = now() WHERE id = $1', [claimId, decision]);
     });
   } catch (e) {
-    if (e && e.code === '23505') throw new HttpError(409, 'Esta publicación ya tiene un reclamo aceptado.');
+    if (e && e.code === '23505' && e.constraint === ACCEPT_RACE_CONSTRAINT) {
+      throw new HttpError(409, 'Esta publicación ya tiene un reclamo aceptado.');
+    }
     throw e;
   }
   return loadClaimView(userId, claimId);

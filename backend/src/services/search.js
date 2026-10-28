@@ -216,8 +216,10 @@ function createParams(initial = []) {
 
 // Distancia Haversine en SQL (metros) entre las coordenadas efectivas de la publicación y el centro.
 // Si la publicación no tiene coordenadas propias se usa el centro de su barrio.
-const EFF_LAT = 'COALESCE(p.latitude, n.center_lat)';
-const EFF_LNG = 'COALESCE(p.longitude, n.center_lng)';
+// Privacidad: el filtro por radio y el orden por cercanía usan SIEMPRE las coordenadas redondeadas a 3 decimales
+// (las mismas que se muestran), nunca las exactas; con el centro del barrio se aplica el mismo redondeo.
+const EFF_LAT = 'round(COALESCE(p.latitude, n.center_lat)::numeric, 3)';
+const EFF_LNG = 'round(COALESCE(p.longitude, n.center_lng)::numeric, 3)';
 function distanceSql(latParam, lngParam) {
   return `(2 * ${EARTH_RADIUS_M} * asin(least(1, sqrt(
     power(sin(radians(${EFF_LAT} - ${latParam}) / 2), 2)
@@ -225,7 +227,7 @@ function distanceSql(latParam, lngParam) {
   ))))`;
 }
 
-// Arma las condiciones del WHERE. Siempre: tipo opuesto, vigente (open/in_claim, sin vencer) y no propia.
+// Arma las condiciones del WHERE. Siempre: el tipo recibido (la app ya pide el que corresponde), vigente (open/in_claim, sin vencer) y no propia.
 // Devuelve { clauses, params } con $1.. en orden.
 function buildWhere(filters, userId) {
   const { add, params } = createParams();
@@ -236,7 +238,11 @@ function buildWhere(filters, userId) {
     `p.user_id <> ${add(userId)}`,
   ];
   if (filters.categoria) clauses.push(`p.category_id = ${add(filters.categoria)}`);
-  if (filters.q) clauses.push(`p.search_tsv @@ plainto_tsquery('spanish', ${add(filters.q)})`);
+  if (filters.q) {
+    // Si q son solo palabras vacías ("de la"), plainto_tsquery queda sin términos (numnode = 0): se ignora el filtro.
+    const qp = add(filters.q);
+    clauses.push(`(numnode(plainto_tsquery('spanish', ${qp})) = 0 OR p.search_tsv @@ plainto_tsquery('spanish', ${qp}))`);
+  }
   if (filters.barrio) clauses.push(`p.neighborhood_id = ${add(filters.barrio)}`);
   if (filters.range && filters.range.from) clauses.push(`p.occurred_on >= ${add(filters.range.from)}::date`);
   if (filters.range && filters.range.to) clauses.push(`p.occurred_on <= ${add(filters.range.to)}::date`);
@@ -289,7 +295,7 @@ function toSearchItem(row, photoIds = [], { withDistance = false } = {}) {
     lng: round3(row.longitude),
     photoUrls: photoIds.map(photoUrl),
   };
-  if (withDistance) item.distanceM = row.distance_m === null || row.distance_m === undefined ? null : Math.round(Number(row.distance_m));
+  if (withDistance) item.distanceM = row.distance_m === null || row.distance_m === undefined ? null : roundTo(Number(row.distance_m) / 100, 0) * 100; // múltiplos de 100 m
   return item;
 }
 

@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Button from '../../components/Button';
 import ClaimCard from '../../components/ClaimCard';
-import Input from '../../components/Input';
 import useMyClaims from '../../hooks/useMyClaims';
 import { colors, spacing } from '../../constants/theme';
 
@@ -18,7 +16,6 @@ const EMPTY_TEXT = {
 
 export default function MyClaimsScreen({ navigation }) {
   const { tab, setTab, claims, loading, error, load } = useMyClaims();
-  const [testPublicationId, setTestPublicationId] = useState('');
 
   return (
     <View style={styles.container}>
@@ -33,20 +30,6 @@ export default function MyClaimsScreen({ navigation }) {
           </Pressable>
         ))}
       </View>
-
-      {/* TEMPORAL (solo desarrollo): hasta que exista el detalle de publicación (punto 4) no hay
-          desde dónde abrir el formulario. Se quita antes del PR. */}
-      {__DEV__ ? (
-        <View style={styles.devBox}>
-          <Input label="DEV · ID de publicación a reclamar" value={testPublicationId} onChangeText={setTestPublicationId} autoCapitalize="none" />
-          <Button
-            variant="link"
-            title="Abrir formulario de reclamo"
-            disabled={!testPublicationId.trim()}
-            onPress={() => navigation.navigate('ClaimForm', { publicationId: testPublicationId.trim() })}
-          />
-        </View>
-      ) : null}
 
       {error ? (
         <View style={styles.errorBox}>
@@ -82,7 +65,6 @@ const styles = StyleSheet.create({
   list: { padding: spacing.md },
   center: { flex: 1 },
   empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.xl },
-  devBox: { margin: spacing.md, marginBottom: 0, padding: spacing.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, borderRadius: 8 },
   errorBox: { backgroundColor: '#FDECEA', borderRadius: 8, padding: spacing.md, margin: spacing.md },
   errorText: { color: colors.error },
 });
