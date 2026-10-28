@@ -165,11 +165,12 @@ test('WHERE con todos los filtros', () => {
   assert.match(sql, /p\.type = \$1/);
   assert.match(sql, /p\.category_id = \$3/);
   assert.match(sql, /p\.search_tsv @@ plainto_tsquery\('spanish', \$4\)/);
+  assert.match(sql, /numnode\(plainto_tsquery\('spanish', \$4\)\) = 0 OR/); // q de palabras vacías: se ignora el filtro
   assert.match(sql, /p\.neighborhood_id = \$5/);
   assert.match(sql, /p\.occurred_on >= \$6::date/);
   assert.match(sql, /p\.occurred_on <= \$7::date/);
-  assert.match(sql, /COALESCE\(p\.latitude, n\.center_lat\) BETWEEN \$8 AND \$9/);
-  assert.match(sql, /COALESCE\(p\.longitude, n\.center_lng\) BETWEEN \$10 AND \$11/);
+  assert.match(sql, /round\(COALESCE\(p\.latitude, n\.center_lat\)::numeric, 3\) BETWEEN \$8 AND \$9/);
+  assert.match(sql, /round\(COALESCE\(p\.longitude, n\.center_lng\)::numeric, 3\) BETWEEN \$10 AND \$11/);
   assert.match(sql, /<= \$14/);
   assert.equal(params.length, 14);
   assert.deepEqual(params.slice(0, 7), ['lost', 'u_yo', 'keys', 'osito', 'palermo', '2026-10-01', '2026-10-15']);
@@ -247,7 +248,9 @@ test('item: forma de la respuesta, coordenadas redondeadas y fotos en orden', ()
 });
 
 test('item: distanceM solo con orden cercanos; sin coordenadas da null', () => {
-  assert.equal(toSearchItem(row({ distance_m: '1234.56' }), [], { withDistance: true }).distanceM, 1235);
+  assert.equal(toSearchItem(row({ distance_m: '1234.56' }), [], { withDistance: true }).distanceM, 1200);
+  assert.equal(toSearchItem(row({ distance_m: 1250 }), [], { withDistance: true }).distanceM, 1300);
+  assert.equal(toSearchItem(row({ distance_m: 49.9 }), [], { withDistance: true }).distanceM, 0);
   assert.equal(toSearchItem(row({ distance_m: 0 }), [], { withDistance: true }).distanceM, 0);
   const sin = toSearchItem(row({ latitude: null, longitude: null }));
   assert.equal(sin.lat, null);
@@ -278,4 +281,11 @@ test('búsqueda reciente: devuelve los mismos campos que el POST', () => {
   assert.equal(toRecentSearch({ ...min, period: 'today' }).periodo, 'hoy');
   // fila vieja: fechas sin period
   assert.equal(toRecentSearch({ ...min, period: null, date_from: '2026-09-01', date_to: '2026-09-02' }).periodo, 'rango');
+});
+
+test('buildWhere: q con solo palabras vacías no filtra (numnode = 0) y q normal sí', () => {
+  const { clauses, params } = buildWhere({ tipo: 'found', q: 'de la', range: null }, 'u_x');
+  const clause = clauses.find((c) => c.includes('plainto_tsquery'));
+  assert.match(clause, /^\(numnode\(plainto_tsquery\('spanish', \$3\)\) = 0 OR p\.search_tsv @@ plainto_tsquery\('spanish', \$3\)\)$/);
+  assert.equal(params.filter((p) => p === 'de la').length, 1); // un solo parámetro, usado dos veces
 });

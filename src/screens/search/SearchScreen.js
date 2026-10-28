@@ -7,7 +7,7 @@ import { describeSearch } from '../../utils/formatSearch';
 
 // Pantalla de inicio: buscador guiado (qué te pasó, qué es, dónde, cuándo) y búsquedas recientes.
 export default function SearchScreen({ navigation }) {
-  const { filters, recents, recentsError, loadRecents, error, searching, onSearch, onRepeat } = useSearchScreen(navigation);
+  const { filters, recents, recentsError, loadRecents, error, onSearch, onRepeat } = useSearchScreen(navigation);
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -22,7 +22,7 @@ export default function SearchScreen({ navigation }) {
       <SearchFields filters={filters} />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Button title="Buscar" onPress={onSearch} loading={searching} />
+      <Button title="Buscar" onPress={onSearch} />
 
       <View style={styles.recents}>
         <Text style={styles.recentsTitle}>Búsquedas recientes</Text>
@@ -35,7 +35,7 @@ export default function SearchScreen({ navigation }) {
           <Text style={styles.muted}>Todavía no hiciste ninguna búsqueda.</Text>
         ) : (
           recents.map((recent) => (
-            <Pressable key={recent.id} onPress={() => onRepeat(recent)} disabled={searching} style={styles.recent}>
+            <Pressable key={recent.id} onPress={() => onRepeat(recent)} style={styles.recent}>
               <Text style={styles.recentText}>{describeSearch(recent, filters.categories, filters.neighborhoods)}</Text>
             </Pressable>
           ))

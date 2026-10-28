@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Location from 'expo-location';
-import { getCategories, getNeighborhoods } from '../services/catalogApi';
+import { getCategoriesCached, getNeighborhoodsCached } from '../services/catalogApi';
 import { getErrorMessage } from '../services/errors';
 import { DEFAULT_RADIUS } from '../constants/search';
 
@@ -41,7 +41,7 @@ export default function useSearchFilters(initial = {}) {
   const loadCatalogs = useCallback(async () => {
     setCatalogError('');
     try {
-      const [cats, hoods] = await Promise.all([getCategories(), getNeighborhoods()]);
+      const [cats, hoods] = await Promise.all([getCategoriesCached(), getNeighborhoodsCached()]);
       setCategories(cats);
       setNeighborhoods(hoods);
     } catch (e) {

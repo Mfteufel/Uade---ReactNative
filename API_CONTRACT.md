@@ -476,7 +476,12 @@ Query string:
 - Los atajos de período ("hoy", "3 días", "una semana") **no existen en la API**: la app los convierte a `desde`/`hasta` con el día de Buenos Aires antes de llamar.
 - `orden=cercanos` necesita un centro: `lat`+`lng`, o `barrio` (se usa el centro del barrio). Sin ninguno, 422.
   Se ordena por distancia (Haversine) y cada item trae `distanceM`.
-- Una publicación sin coordenadas propias usa el centro de su barrio para el filtro por radio y para la distancia.
+- **Privacidad de ubicación**: el filtro por radio y el orden por cercanía se calculan sobre las coordenadas **redondeadas a 3 decimales**
+  (`round(p.latitude::numeric, 3)`, las mismas que se devuelven en `lat`/`lng`), nunca sobre las exactas.
+  Una publicación sin coordenadas propias usa el centro de su barrio, redondeado igual (3 decimales).
+  `distanceM` se devuelve **redondeado a múltiplos de 100 m**.
+- `q` formada solo por palabras vacías del español (por ejemplo `de la`): la consulta de texto queda sin términos y **se ignora el filtro**
+  (no devuelve 0 resultados).
 
 200:
 ```json
@@ -495,7 +500,7 @@ Query string:
       "lat": -34.581,
       "lng": -58.426,
       "photoUrls": ["http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90"],
-      "distanceM": 850
+      "distanceM": 900
     }
   ],
   "page": 1,
@@ -504,7 +509,7 @@ Query string:
 }
 ```
 - `lat` y `lng` salen **redondeadas a 3 decimales** (~110 m) o `null`. `timeFrom` y `timeTo` pueden ser `null`.
-- `photoUrls` va ordenado por posición (puede estar vacío). `distanceM` (metros, entero) solo viene con `orden=cercanos`.
+- `photoUrls` va ordenado por posición (puede estar vacío). `distanceM` (metros, múltiplo de 100) solo viene con `orden=cercanos`.
 - **No se devuelve** la dirección exacta, la pregunta ni la respuesta de verificación.
 
 Errores (todos 422, `message` en español): falta o es inválido el tipo; categoría, barrio o palabras clave inválidos;

@@ -25,7 +25,7 @@ export default function PublicationCard({ item, onPress }) {
         </View>
         <Text style={styles.line}>{item.category.name} · {item.neighborhood.name}</Text>
         <Text style={styles.muted}>Ocurrió el {formatDate(item.occurredOn)}</Text>
-        {hasCoords ? <Text style={styles.muted}>{item.lat}, {item.lng}</Text> : null}
+        {hasCoords ? <Text style={styles.muted}>Ubicación aprox.: {item.lat}, {item.lng}</Text> : null}
         {item.distanceM !== undefined && item.distanceM !== null ? (
           <Text style={styles.distance}>A {formatDistance(item.distanceM)}</Text>
         ) : null}

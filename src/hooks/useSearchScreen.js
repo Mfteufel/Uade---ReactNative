@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { getRecentSearches, saveRecentSearch } from '../services/searchApi';
+import { getRecentSearches } from '../services/searchApi';
 import { getErrorMessage } from '../services/errors';
-import { tipoToSituacion, toRecentBody } from '../utils/searchCriteria';
+import { tipoToSituacion } from '../utils/searchCriteria';
 import useSearchFilters from './useSearchFilters';
 
 // Criterios guardados -> criterios de búsqueda (con los nombres de la API, sin nulos).
@@ -22,8 +22,6 @@ export default function useSearchScreen(navigation) {
   const [recents, setRecents] = useState([]);
   const [recentsError, setRecentsError] = useState('');
   const [error, setError] = useState('');
-  const [searching, setSearching] = useState(false);
-  const searchingRef = useRef(false); // evita buscar dos veces con un doble toque
 
   const loadRecents = useCallback(async () => {
     setRecentsError('');
@@ -42,22 +40,8 @@ export default function useSearchScreen(navigation) {
     }, [loadRecents])
   );
 
-  const go = async (criteria) => {
-    if (searchingRef.current) return;
-    searchingRef.current = true;
-    setSearching(true);
-    setError('');
-    try {
-      // Guardar la reciente no tiene que impedir buscar: si falla, se sigue igual.
-      await saveRecentSearch(toRecentBody(criteria)).catch(() => {});
-      navigation.navigate('Results', { filters: criteria });
-    } catch (e) {
-      setError(getErrorMessage(e));
-    } finally {
-      searchingRef.current = false;
-      setSearching(false);
-    }
-  };
+  // La búsqueda reciente se guarda en los resultados, recién cuando la primera página responde bien.
+  const go = (criteria) => navigation.navigate('Results', { filters: criteria });
 
   const onSearch = () => {
     const problem = filters.validate();
@@ -67,5 +51,5 @@ export default function useSearchScreen(navigation) {
 
   const onRepeat = (recent) => go(fromRecent(recent, filters.neighborhoods));
 
-  return { filters, recents, recentsError, loadRecents, error, searching, onSearch, onRepeat };
+  return { filters, recents, recentsError, loadRecents, error, onSearch, onRepeat };
 }
