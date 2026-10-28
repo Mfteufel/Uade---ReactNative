@@ -14,6 +14,7 @@ export default function SearchScreen({ navigation }) {
       <View style={styles.links}>
         <Button variant="link" title="Mi perfil" onPress={() => navigation.navigate('MyProfile')} />
         <Button variant="link" title="Mis reclamos" onPress={() => navigation.navigate('MyClaims')} />
+        <Button variant="link" title="Mi historial" onPress={() => navigation.navigate('History')} />
         <Button variant="link" title="Configuración" onPress={() => navigation.navigate('Settings')} />
       </View>
 
@@ -47,7 +48,7 @@ export default function SearchScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, backgroundColor: colors.background, flexGrow: 1 },
-  links: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
+  links: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: spacing.sm },
   heading: { fontSize: 24, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
   error: { color: colors.error, marginBottom: spacing.sm },
   muted: { color: colors.muted },
