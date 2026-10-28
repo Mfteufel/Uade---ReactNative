@@ -5,6 +5,7 @@ const cors = require('cors');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const photosRouter = require('./routes/photos');
+const publicationsRouter = require('./routes/publications');
 const { authLimiter, unauthLimiter, photosLimiter } = require('./middleware/rateLimit');
 const { notFound, errorHandler } = require('./middleware/errors');
 
@@ -37,6 +38,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', authLimiter, authRouter);
 app.use('/users', unauthLimiter, usersRouter);
 app.use('/photos', photosLimiter, photosRouter);
+app.use('/publicaciones', publicationsRouter);
 
 app.use(notFound);
 app.use(errorHandler);
