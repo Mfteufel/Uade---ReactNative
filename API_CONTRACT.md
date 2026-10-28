@@ -45,8 +45,8 @@ Cuando se supera un límite: `429` con
 | `/users/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /users/me/photo` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
 | `GET /photos/:id` | 1000 pedidos / 15 min | IP |
-| Todo `/reclamos/*`, `/publicaciones/:id/reclamos/*` y `/barrios` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
-| `/reclamos/*`, `/publicaciones/:id/reclamos/*` y `/barrios` sin token válido | 100 respuestas 401 / 15 min | IP |
+| Todo `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios` y `/historial` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
+| `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios` y `/historial` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /reclamos/foto` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
 
 ### Códigos de error usados
@@ -557,6 +557,56 @@ Borra una búsqueda reciente **propia**.
 
 ---
 
+## Historial (punto 10)
+
+### GET `/historial`
+Las devoluciones del usuario del token, de la más nueva a la más vieja. Sale de la tabla `returns`:
+`devolvi` = `returns.user_id` es el usuario; `recupere` = `returns.recovered_by_id` es el usuario. Solo lectura.
+
+Query string (todos opcionales):
+
+| Parámetro | Valores |
+|---|---|
+| `rol` | `devolvi` \| `recupere`. Sin `rol` vienen las dos |
+| `desde`, `hasta` | `AAAA-MM-DD`, ambos extremos incluidos, por separado. Se aplican a la fecha de la devolución (día de Buenos Aires). Si van los dos, `desde` ≤ `hasta` |
+| `categoria` | id de `/categorias`. Filtra por la categoría de la publicación |
+| `pagina` | entero desde 1 (máx. 1000). Por defecto 1 |
+| `limite` | entero de 1 a 50. Por defecto 20 |
+
+Respuesta `200`:
+```json
+{
+  "items": [
+    {
+      "id": "60",
+      "role": "devolvi",
+      "date": "2026-10-22T17:42:15.846Z",
+      "object": { "title": "Celular Samsung azul", "category": { "id": "electronics", "name": "Electrónica" } },
+      "counterpart": { "id": "u_seed_bruno", "name": "Bruno Seed", "photoUri": null },
+      "canRate": true,
+      "myRating": null,
+      "canThank": false,
+      "thanked": true
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "hasMore": false
+}
+```
+- `id`: id de la devolución (string). `role`: `devolvi` \| `recupere`. `date`: `returns.created_at` en ISO.
+- `object`: título y categoría de la publicación (`returns.claim_id` → `claims` → `publications`). `null` si la devolución no tiene reclamo.
+- `counterpart`: la otra persona (`id`, `name`, `photoUri` o `null`). **Nunca** trae teléfono ni email. `null` si la devolución no tiene `recovered_by_id`.
+- `canRate`: `true` si hay contraparte, pasaron **7 días o menos** desde `date` (el borde es inclusivo) y todavía no valoré esa devolución.
+- `myRating`: `{ "positive": true|false, "comment": string|null }` si ya valoré; si no, `null`.
+- `canThank`: `true` solo si `role` es `recupere`, dentro de los mismos 7 días y sin agradecimiento previo (hay uno por devolución).
+- `thanked`: `true` si la devolución ya tiene agradecimiento (de quien recuperó).
+- **Devoluciones viejas** (anteriores a la migración 007, sin `claim_id` ni `recovered_by_id`): salen como `role: "devolvi"`, con `object` y `counterpart` en `null` y `canRate`/`canThank` en `false`. No se inventa ningún dato.
+- El plazo de 7 días lo informan `canRate` y `canThank`; lo que valida el POST de valoración y de agradecimiento es de esos endpoints (todavía no implementados).
+
+Errores: `401` sin token. `422` (`message` en español) por `rol` distinto de `devolvi`/`recupere`, fechas con otro formato o `desde` posterior a `hasta`, categoría inválida, página o límite fuera de rango.
+Rate limit: el mismo contador que `/users/*` (300 pedidos / 15 min por usuario; 100 respuestas 401 / 15 min por IP).
+
 ## Complementarios
 
 ### GET `/photos/:id`
@@ -587,7 +637,7 @@ Sin token. 200: `{ "status": "ok" }`.
   es una de las dos partes; se puede valorar hasta 7 días después de la devolución; el reclamo vence a las 48 h y la publicación a los 30 días
   (lo fija el endpoint); `verification_answer` y `exact_address` son privadas; `client_id` lo genera la app (idempotencia offline).
 - **Seguidas**: la novedad es `publications.status_changed_at > follows.seen_at`.
-- **Historial de devoluciones**: hoy `completedReturns` es solo un contador.
+- **Historial de devoluciones**: `GET /historial` ya existe (ver arriba). Faltan las valoraciones y los agradecimientos (POST), que son del mismo punto.
 
 ## Datos de ejemplo (seed)
 
