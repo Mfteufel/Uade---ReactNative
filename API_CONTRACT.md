@@ -45,8 +45,8 @@ Cuando se supera un límite: `429` con
 | `/users/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /users/me/photo` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
 | `GET /photos/:id` | 1000 pedidos / 15 min | IP |
-| Todo `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios` y `/historial` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
-| `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios` y `/historial` sin token válido | 100 respuestas 401 / 15 min | IP |
+| Todo `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
+| `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /reclamos/foto` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
 
 ### Códigos de error usados
@@ -566,7 +566,8 @@ Borra una búsqueda reciente **propia**.
 ## Historial (punto 10)
 
 ### GET `/historial`
-Las devoluciones del usuario del token, de la más nueva a la más vieja. Sale de la tabla `returns`:
+Las devoluciones del usuario del token, de la más nueva a la más vieja. Sale de la tabla `returns`
+(solo las que tienen `claim_id` y `recovered_by_id`, ver abajo):
 `devolvi` = `returns.user_id` es el usuario; `recupere` = `returns.recovered_by_id` es el usuario. Solo lectura.
 
 Query string (todos opcionales):
@@ -603,15 +604,53 @@ Respuesta `200`:
 - `id`: id de la devolución (string). `role`: `devolvi` \| `recupere`. `date`: `returns.created_at` en ISO.
 - `object`: título y categoría de la publicación (`returns.claim_id` → `claims` → `publications`). `null` si la devolución no tiene reclamo.
 - `counterpart`: la otra persona (`id`, `name`, `photoUri` o `null`). **Nunca** trae teléfono ni email. `null` si la devolución no tiene `recovered_by_id`.
-- `canRate`: `true` si hay contraparte, pasaron **7 días o menos** desde `date` (el borde es inclusivo) y todavía no valoré esa devolución.
+- `canRate` (para `POST /devoluciones/:id/valoraciones`): `true` si hay contraparte, pasaron **7 días o menos** desde `date` (el borde es inclusivo) y todavía no valoré esa devolución.
 - `myRating`: `{ "positive": true|false, "comment": string|null }` si ya valoré; si no, `null`.
 - `canThank`: `true` solo si `role` es `recupere`, dentro de los mismos 7 días y sin agradecimiento previo (hay uno por devolución).
 - `thanked`: `true` si la devolución ya tiene agradecimiento (de quien recuperó).
-- **Devoluciones viejas** (anteriores a la migración 007, sin `claim_id` ni `recovered_by_id`): salen como `role: "devolvi"`, con `object` y `counterpart` en `null` y `canRate`/`canThank` en `false`. No se inventa ningún dato.
-- El plazo de 7 días lo informan `canRate` y `canThank`; lo que valida el POST de valoración y de agradecimiento es de esos endpoints (todavía no implementados).
+- **No se listan** las devoluciones sin `claim_id` o sin `recovered_by_id` (datos viejos, anteriores a la migración 007, sin objeto ni contraparte).
+  Por eso la cantidad del historial puede ser menor que `completedReturns` de la reputación.
+- `object` o `counterpart` solo pueden venir en `null` si se borró la publicación o la cuenta de la otra persona (no se inventa ningún dato).
+- El plazo de 7 días lo informan `canRate` y `canThank`; el POST de valoración aplica la misma regla; el de agradecimiento todavía no está implementado.
 
 Errores: `401` sin token. `422` (`message` en español) por `rol` distinto de `devolvi`/`recupere`, fechas con otro formato o `desde` posterior a `hasta`, categoría inválida, página o límite fuera de rango.
 Rate limit: el mismo contador que `/users/*` (300 pedidos / 15 min por usuario; 100 respuestas 401 / 15 min por IP).
+
+### POST `/devoluciones/:id/valoraciones`
+Valora a la otra parte de una devolución. Requiere token. `:id` es el `id` de un item de `/historial`.
+
+Body:
+```json
+{ "positive": true, "comment": "Muy amable y puntual" }
+```
+- `positive`: obligatorio, `true` (positiva) o `false` (negativa).
+- `comment`: opcional. Se recortan los espacios; máximo 280 caracteres; sin caracteres de control (tampoco saltos de línea).
+  Si queda vacío se guarda `null`.
+
+Reglas, en este orden:
+1. `:id` inválido o la devolución no existe → `404 Devolución no encontrada.`
+2. Quien pide no es parte (ni quien devolvió ni quien recuperó) → el mismo `404`, sin revelar que existe.
+3. La devolución no tiene quien recuperó → `422 Esta devolución no tiene a quién valorar.`
+4. Pasaron más de 7 días desde la devolución (borde inclusivo: a los 7 días exactos todavía se puede) →
+   `422 El plazo para valorar venció (7 días desde la devolución).` Es el mismo plazo que informa `canRate` en `/historial`.
+5. Ya valoró esa devolución → `409 Ya valoraste esta devolución.` (también si llegan dos pedidos a la vez).
+
+El body se valida antes de buscar la devolución (`422` con el mensaje del campo); eso no revela si la devolución existe.
+Se valora a la otra parte: quien devolvió valora a quien recuperó y viceversa.
+
+Respuesta `201`:
+```json
+{
+  "id": "7",
+  "returnId": "60",
+  "ratedUserId": "u_seed_bruno",
+  "positive": true,
+  "comment": "Muy amable y puntual",
+  "createdAt": "2026-10-28T14:00:00.000Z"
+}
+```
+- La valoración se suma sola a `GET /users/:id/reputation` de la persona valorada (positivas, negativas, puntos y porcentaje).
+- Errores además de los de arriba: `401` sin token. Rate limit: el mismo que `/historial`.
 
 ## Complementarios
 
@@ -644,7 +683,7 @@ Sin token. 200: `{ "status": "ok" }`.
   es una de las dos partes; se puede valorar hasta 7 días después de la devolución; el reclamo vence a las 48 h y la publicación a los 30 días
   (lo fija el endpoint); `verification_answer` y `exact_address` son privadas; `client_id` lo genera la app (idempotencia offline).
 - **Seguidas**: la novedad es `publications.status_changed_at > follows.seen_at`.
-- **Historial de devoluciones**: `GET /historial` ya existe (ver arriba). Faltan las valoraciones y los agradecimientos (POST), que son del mismo punto.
+- **Historial de devoluciones**: `GET /historial` ya existe (ver arriba). `POST /devoluciones/:id/valoraciones` también. Falta el agradecimiento (POST), del mismo punto.
 
 ## Datos de ejemplo (seed)
 

@@ -11,6 +11,7 @@ const categoriesRouter = require('./routes/categories');
 const searchRouter = require('./routes/search');
 const recentSearchesRouter = require('./routes/recentSearches');
 const historyRouter = require('./routes/history');
+const returnsRouter = require('./routes/returns');
 const { expireDueClaims } = require('./services/claims');
 const { deleteOrphanClaimPhotos } = require('./services/photos');
 const { authLimiter, unauthLimiter, photosLimiter } = require('./middleware/rateLimit');
@@ -52,6 +53,7 @@ app.use('/categorias', unauthLimiter, categoriesRouter);
 app.use('/publicaciones', searchRouter); // solo GET /; sus middlewares van en la ruta (ver routes/search.js)
 app.use('/busquedas-recientes', unauthLimiter, recentSearchesRouter);
 app.use('/historial', unauthLimiter, historyRouter);
+app.use('/devoluciones', unauthLimiter, returnsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

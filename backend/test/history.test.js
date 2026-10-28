@@ -144,7 +144,7 @@ test('toHistoryItem: pasados 7 días no se puede valorar ni agradecer', () => {
   assert.equal(item.canThank, false);
 });
 
-test('toHistoryItem: devolución vieja sin reclamo ni contraparte sale con null, sin inventar datos', () => {
+test('toHistoryItem: si falta el objeto o la contraparte salen en null, sin inventar datos', () => {
   const item = h.toHistoryItem(row({
     role: 'devolvi', publication_title: null, category_id: null, category_name: null,
     counterpart_id: null, counterpart_name: null, counterpart_photo_id: null,
@@ -168,6 +168,14 @@ test('buildHistoryQuery: es de solo lectura, filtra por el usuario y pide uno m�
   assert.doesNotMatch(text, /INSERT|UPDATE|DELETE|ALTER|DROP/i);
   assert.match(text, /r\.user_id = \$1 OR r\.recovered_by_id = \$1/);
   assert.deepEqual(params, ['u_x', 11, 10]);
+});
+
+test('buildHistoryQuery: excluye las devoluciones sin reclamo o sin quien recuperó, con cualquier rol', () => {
+  for (const rol of [null, 'devolvi', 'recupere']) {
+    const { text } = h.buildHistoryQuery({ rol, from: null, to: null, categoria: null, page: 1, limit: 20 }, 'u_x');
+    assert.match(text, /AND r\.claim_id IS NOT NULL/, String(rol));
+    assert.match(text, /AND r\.recovered_by_id IS NOT NULL/, String(rol));
+  }
 });
 
 test('buildHistoryQuery: cada rol usa su columna y los filtros agregan parámetros', () => {

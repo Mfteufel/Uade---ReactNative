@@ -106,7 +106,8 @@ function computeCanThank({ role, createdAt, now, alreadyThanked }) {
 const iso = (d) => (d instanceof Date ? d.toISOString() : d);
 
 // Fila de la base -> item de la respuesta. La contraparte nunca lleva teléfono ni email.
-// Una devolución vieja (sin reclamo o sin quien recuperó) sale con object y/o counterpart en null: no se inventa nada.
+// La consulta ya excluye las devoluciones sin reclamo o sin quien recuperó; si igual falta un dato
+// (por ejemplo, la publicación se borró), object o counterpart salen en null: no se inventa nada.
 function toHistoryItem(row, now = new Date()) {
   const createdAt = iso(row.created_at);
   const rated = row.rating_positive !== null && row.rating_positive !== undefined;
@@ -132,6 +133,7 @@ function toHistoryItem(row, now = new Date()) {
 }
 
 // Consulta de solo lectura. $1 es siempre el usuario.
+// Se excluyen las devoluciones sin reclamo o sin quien recuperó (datos viejos del seed, sin objeto ni contraparte).
 function buildHistoryQuery(filters, userId) {
   const params = [userId];
   const add = (v) => { params.push(v); return `$${params.length}`; };
@@ -139,7 +141,11 @@ function buildHistoryQuery(filters, userId) {
     devolvi: 'r.user_id = $1',
     recupere: 'r.recovered_by_id = $1',
   };
-  const clauses = [filters.rol ? who[filters.rol] : '(r.user_id = $1 OR r.recovered_by_id = $1)'];
+  const clauses = [
+    filters.rol ? who[filters.rol] : '(r.user_id = $1 OR r.recovered_by_id = $1)',
+    'r.claim_id IS NOT NULL',
+    'r.recovered_by_id IS NOT NULL',
+  ];
   if (filters.from) clauses.push(`r.created_at >= ${add(filters.from)}`);
   if (filters.to) clauses.push(`r.created_at < ${add(filters.to)}`);
   if (filters.categoria) clauses.push(`p.category_id = ${add(filters.categoria)}`);
