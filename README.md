@@ -140,7 +140,7 @@ src/
   components/        Button, Input, Avatar, ReputationCard, BadgeList...
   constants/         theme, badges, sampleUsers
   hooks/             useCountdown
-  utils/             validators, biometrics, canShowPhone, memberSince
+  utils/             validators, biometrics, memberSince
 ```
 
 Las pantallas **nunca** tocan datos directamente: siempre llaman a funciones de `src/api/`.
@@ -161,4 +161,3 @@ Las pantallas **nunca** tocan datos directamente: siempre llaman a funciones de 
 - `puntos = devoluciones×10 + valoraciones positivas×2 − valoraciones negativas×5` (mínimo 0).
 - Las insignias se definen en `src/constants/badges.js`. Para agregar una, sumá un objeto al array
   con su `metric` y `goal`; se muestran solas al cumplir la meta.
-- `canShowPhone(user, claim)` (`src/utils/canShowPhone.js`) queda lista para cuando existan los reclamos.
