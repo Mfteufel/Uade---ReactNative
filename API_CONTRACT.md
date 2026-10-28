@@ -326,6 +326,38 @@ Sin token. 200: `{ "status": "ok" }`.
 
 ---
 
+## Publicaciones
+
+### GET `/publicaciones/:id`
+Detalle de una publicación. Requiere token. Rate limit: los mismos de `/users/*`.
+
+200:
+```json
+{
+  "id": "p_ab12...",
+  "type": "found",
+  "title": "Llaves con llavero de osito",
+  "description": "Encontré un juego de 3 llaves con un llavero de peluche en la plaza.",
+  "status": "open",
+  "category": { "id": "keys", "name": "Llaves" },
+  "neighborhood": { "id": "palermo", "name": "Palermo" },
+  "occurredOn": "2026-10-24",
+  "timeFrom": "09:00",
+  "timeTo": "12:00",
+  "exactAddress": null,
+  "photoUrls": ["http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90"],
+  "publisher": { /* igual que GET /users/:id/public */ }
+}
+```
+- `exactAddress`: solo para quien publicó o quien tiene un reclamo `accepted` sobre esta publicación. Para el resto llega `null`.
+- No incluye la pregunta ni la respuesta de verificación.
+- `status`: si ya pasó el vencimiento y seguía `open` o `in_claim`, llega `expired`.
+- `photoUrls` va ordenado por posición (puede estar vacío). `description`, `timeFrom` y `timeTo` pueden ser `null`.
+
+Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.`
+
+---
+
 ## Pendiente para el backend (todavía no implementado)
 
 - **Reclamos**: cuando existan, el back debe devolver el teléfono de la otra parte
