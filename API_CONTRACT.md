@@ -301,9 +301,20 @@ Perfil visible para otras personas. **No incluye** email, teléfono, barrio ni h
   "name": "Lucía Fernández",
   "photoUri": "http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90",
   "memberSince": "2024-03-10T12:00:00.000Z",
-  "reputation": { /* Reputation */ }
+  "reputation": { /* Reputation */ },
+  "thanks": [
+    {
+      "message": "¡Gracias por devolverme el celular!",
+      "createdAt": "2026-10-27T20:00:00.000Z",
+      "author": { "name": "Bruno Seed", "photoUri": null }
+    }
+  ]
 }
 ```
+- `thanks` (punto 10): agradecimientos públicos que recibió por devolver objetos (`POST /devoluciones/:id/agradecimiento`).
+  Los **últimos 20**, del más nuevo al más viejo; `[]` si no tiene. Cada item trae **solo** `message`, `createdAt` (ISO) y
+  `author` (`name`, `photoUri` o `null`). No trae ids, mails, teléfonos ni datos del objeto o de la devolución.
+- Si quien agradeció borra su cuenta, su agradecimiento se borra con ella (`thanks.author_id` es `ON DELETE CASCADE`) y deja de aparecer.
 
 Errores: 404 `Usuario no encontrado.` (también si el `:id` tiene formato inválido).
 
