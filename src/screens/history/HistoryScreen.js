@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import Button from '../../components/Button';
 import Chip from '../../components/Chip';
 import Input from '../../components/Input';
 import HistoryCard from '../../components/HistoryCard';
+import RatingModal from '../../components/RatingModal';
+import ThanksModal from '../../components/ThanksModal';
 import useHistory from '../../hooks/useHistory';
 import { colors, spacing } from '../../constants/theme';
 
@@ -12,10 +15,32 @@ export default function HistoryScreen({ navigation }) {
     rol, setRol, applied, draft, setDraft, filterError, categories, hasFilters,
     setCategoria, applyDates, clearFilters,
     items, hasMore, loading, loadingMore, refreshing, error,
-    loadMore, refresh, retry,
+    loadMore, refresh, retry, updateItem,
   } = useHistory();
+  const [rating, setRating] = useState(null); // devolución que se está valorando
+  const [thanking, setThanking] = useState(null); // devolución que se está agradeciendo
+  const [notice, setNotice] = useState('');
+
+  // Aviso corto después de valorar o agradecer.
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(''), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const openProfile = (userId) => navigation.navigate('PublicProfile', { userId });
+
+  const onRated = (result) => {
+    updateItem(rating.id, { canRate: false, myRating: { positive: result.positive, comment: result.comment } });
+    setRating(null);
+    setNotice('¡Gracias por tu valoración!');
+  };
+
+  const onThanked = () => {
+    updateItem(thanking.id, { thanked: true, canThank: false });
+    setThanking(null);
+    setNotice('Agradecimiento publicado');
+  };
 
   const errorBox = (
     <View style={styles.errorBox}>
@@ -62,7 +87,9 @@ export default function HistoryScreen({ navigation }) {
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <HistoryCard item={item} onOpenProfile={openProfile} />}
+        renderItem={({ item }) => (
+          <HistoryCard item={item} onOpenProfile={openProfile} onRate={setRating} onThank={setThanking} />
+        )}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         ListFooterComponent={
@@ -75,6 +102,10 @@ export default function HistoryScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
       />
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+      {/* 409/422: el modal muestra el mensaje del servidor y el historial se recarga, porque el estado cambió. */}
+      <RatingModal item={rating} onDone={onRated} onStale={refresh} onClose={() => setRating(null)} />
+      <ThanksModal item={thanking} onDone={onThanked} onStale={refresh} onClose={() => setThanking(null)} />
     </View>
   );
 }
@@ -90,4 +121,9 @@ const styles = StyleSheet.create({
   empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.lg },
   errorBox: { backgroundColor: '#FDECEA', borderRadius: 8, padding: spacing.md, marginTop: spacing.md },
   errorText: { color: colors.error },
+  notice: {
+    position: 'absolute', left: spacing.md, right: spacing.md, bottom: spacing.lg,
+    backgroundColor: colors.primary, color: '#fff', textAlign: 'center', fontWeight: '600',
+    borderRadius: 8, padding: spacing.md, overflow: 'hidden',
+  },
 });

@@ -4,14 +4,10 @@ import { formatDate } from './formatSearch';
 // "2026-10-22T17:42:15.846Z" -> "22/10/2026" (día de Buenos Aires).
 export const formatReturnDate = (iso) => (iso ? formatDate(todayInBuenosAires(new Date(iso))) : '');
 
-// Indicadores informativos de una devolución (los botones llegan en el paso E).
+// Lo que ya pasó con una devolución. Lo que todavía se puede hacer (valorar, agradecer) va como botón en la tarjeta.
 export function historyStatus(item) {
   const out = [];
   if (item.myRating) out.push(`Ya valoraste: ${item.myRating.positive ? '👍' : '👎'}`);
-  else if (item.canRate) out.push('Podés valorar');
-  if (item.role === 'recupere') {
-    if (item.thanked) out.push('Agradeciste');
-    else if (item.canThank) out.push('Podés agradecer');
-  }
+  if (item.thanked) out.push(item.role === 'recupere' ? 'Agradeciste' : 'Te agradeció');
   return out;
 }

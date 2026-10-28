@@ -108,6 +108,9 @@ export default function useHistory() {
     reload({ rol, ...NO_FILTERS });
   };
 
+  // Actualiza una sola tarjeta (después de valorar o agradecer) sin recargar la lista.
+  const updateItem = (id, patch) => setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+
   const loadMore = () => {
     if (busyRef.current || !hasMore || error) return;
     run(queryRef.current, page + 1, 'more');
@@ -122,6 +125,6 @@ export default function useHistory() {
     rol, setRol, applied, draft, setDraft, filterError, categories, hasFilters,
     setCategoria, applyDates, clearFilters,
     items, hasMore, loading, loadingMore, refreshing, error,
-    loadMore, refresh, retry,
+    loadMore, refresh, retry, updateItem,
   };
 }

@@ -1,12 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Avatar from './Avatar';
+import Button from './Button';
 import { colors, spacing } from '../constants/theme';
 import { formatReturnDate, historyStatus } from '../utils/formatHistory';
 
-// Una devolución del historial: fecha, objeto, contraparte (toca para ver su perfil) y estado informativo.
-export default function HistoryCard({ item, onOpenProfile }) {
+// Una devolución del historial: fecha, objeto, contraparte (toca para ver su perfil), estado y acciones.
+export default function HistoryCard({ item, onOpenProfile, onRate, onThank }) {
   const status = historyStatus(item);
   const other = item.counterpart;
+  const canThank = item.canThank && item.role === 'recupere';
 
   return (
     <View style={styles.card}>
@@ -36,6 +38,13 @@ export default function HistoryCard({ item, onOpenProfile }) {
           ))}
         </View>
       ) : null}
+
+      {item.canRate || canThank ? (
+        <View style={styles.actions}>
+          {item.canRate ? <Button variant="link" title="Valorar" onPress={() => onRate(item)} /> : null}
+          {canThank ? <Button variant="link" title="Agradecer" onPress={() => onThank(item)} /> : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -48,6 +57,7 @@ const styles = StyleSheet.create({
   person: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
   personName: { marginLeft: spacing.sm, color: colors.primary, fontWeight: '600', flexShrink: 1 },
   row: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
+  actions: { flexDirection: 'row', marginTop: spacing.xs },
   status: {
     fontSize: 12, fontWeight: '600', color: colors.text, backgroundColor: colors.background,
     borderRadius: 12, paddingVertical: 2, paddingHorizontal: spacing.sm, marginRight: spacing.sm, marginTop: spacing.xs,
