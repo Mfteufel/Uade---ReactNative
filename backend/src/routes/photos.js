@@ -15,7 +15,7 @@ const BASE_HEADERS = {
   'Content-Security-Policy': "default-src 'none'",
 };
 
-// Las fotos de perfil son públicas (se ven en perfiles y reclamos) y se pueden cachear.
+// Las fotos de perfil y las de publicaciones son públicas (se ven en perfiles, reclamos y resultados) y se pueden cachear.
 const PUBLIC_HEADERS = { ...BASE_HEADERS, 'Cache-Control': 'public, max-age=31536000, immutable' };
 // Las fotos de reclamo son evidencia privada: ningún proxy ni caché compartido las puede guardar.
 const PRIVATE_HEADERS = { ...BASE_HEADERS, 'Cache-Control': 'private, no-store' };
@@ -31,21 +31,24 @@ router.get('/:id', async (req, res, next) => {
   try {
     const id = String(req.params.id).toLowerCase();
     if (!UUID_RE.test(id)) throw new HttpError(404, NOT_FOUND);
-    // Solo se sirve la foto vigente de algún usuario o la foto adjunta a un reclamo.
+    // Solo se sirve la foto vigente de algún usuario, la de una publicación o la foto adjunta a un reclamo.
     const r = await query(
       `SELECT p.data,
               EXISTS (SELECT 1 FROM users u WHERE u.photo_id = p.id) AS is_profile,
+              EXISTS (SELECT 1 FROM publication_photos pp WHERE pp.photo_id = p.id) AS is_publication,
               c.claimer_id, c.publisher_id
          FROM photos p
          LEFT JOIN claims c ON c.photo_id = p.id
         WHERE p.id = $1
-          AND (EXISTS (SELECT 1 FROM users u WHERE u.photo_id = p.id) OR c.id IS NOT NULL)`,
+          AND (EXISTS (SELECT 1 FROM users u WHERE u.photo_id = p.id)
+               OR EXISTS (SELECT 1 FROM publication_photos pp WHERE pp.photo_id = p.id)
+               OR c.id IS NOT NULL)`,
       [id]
     );
     if (r.rowCount === 0) throw new HttpError(404, NOT_FOUND);
     const photo = r.rows[0];
 
-    if (photo.is_profile) {
+    if (photo.is_profile || photo.is_publication) {
       res.set({ ...PUBLIC_HEADERS, ETag: `"${id}"` });
     } else {
       // Foto de un reclamo: solo la ven las dos partes. A cualquier otra persona se le responde

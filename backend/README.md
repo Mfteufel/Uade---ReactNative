@@ -77,8 +77,9 @@ no figure en `schema_migrations`. **No** aplica los de `migrations/rollback/`. C
 | `006_meeting_points.sql` | `meeting_points` |
 | `007_returns_ratings_thanks.sql` | columnas nuevas en `returns` y `ratings`, tabla `thanks` |
 | `008_alerts_follows_searches.sql` | `alerts`, `follows`, `recent_searches` |
+| `009_recent_searches_period.sql` | `recent_searches.period` (hoy / 3d / 7d / rango) |
 
-Con las ocho aplicadas hay 18 tablas de datos, más `schema_migrations` (que crea `migrate.js`), o sea 19 en total.
+Con las nueve aplicadas (la 009 solo agrega una columna) hay 18 tablas de datos, más `schema_migrations` (que crea `migrate.js`), o sea 19 en total.
 
 ### Estados y tipos (CHECK, no ENUM)
 

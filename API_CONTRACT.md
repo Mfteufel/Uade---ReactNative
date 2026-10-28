@@ -444,6 +444,125 @@ Catálogo de barrios para los formularios. **Ruta mínima agregada para "Lo enco
 
 ---
 
+## Buscador (punto 3)
+
+Todas estas rutas requieren token. Rate limit: el de `/users/*` (300 / 15 min por usuario).
+
+### GET `/categorias`
+Catálogo de categorías, ordenado por `sort_order`.
+
+200: `[{ "id": "documents", "name": "Documentos" }, ...]`
+
+### GET `/publicaciones`
+Lista las publicaciones de un tipo. **El servidor no invierte nada**: la app pide `tipo=found` si la persona perdió algo y `tipo=lost` si lo encontró.
+Solo trae publicaciones `open` o `in_claim` que no hayan vencido (`expires_at > now()`) y **nunca las propias**.
+
+Esta ruta es solo el listado (`GET /publicaciones`). El detalle (`/publicaciones/:id`) es de otro punto.
+
+Query string:
+
+| Parámetro | Obligatorio | Valores |
+|---|---|---|
+| `tipo` | Sí | `lost` \| `found`: el tipo de publicación que se devuelve |
+| `categoria` | No | id de `/categorias` |
+| `q` | No | palabras clave, máx. 100 caracteres. Busca en título y descripción (español, `plainto_tsquery`) |
+| `barrio` | No | id de `/barrios`. Filtra por ese barrio |
+| `lat`, `lng`, `radio` | No, pero van **juntos** | `lat` -90 a 90, `lng` -180 a 180, `radio` entero en metros de 100 a 50000. Filtra por distancia |
+| `desde`, `hasta` | No, cada uno por separado | `AAAA-MM-DD`, ambos extremos incluidos. Se aplican a la fecha del suceso (`occurredOn`). Si van los dos, `desde` ≤ `hasta` |
+| `orden` | No | `recientes` (por defecto, más nuevas primero) \| `cercanos` |
+| `pagina` | No | entero desde 1 (máx. 1000). Por defecto 1 |
+| `limite` | No | entero de 1 a 50. Por defecto 20 |
+
+- `orden`, `pagina` y `limite` **no están en la guía del equipo: se agregan por la consigna** (resultados ordenables y paginados).
+- Los atajos de período ("hoy", "3 días", "una semana") **no existen en la API**: la app los convierte a `desde`/`hasta` con el día de Buenos Aires antes de llamar.
+- `orden=cercanos` necesita un centro: `lat`+`lng`, o `barrio` (se usa el centro del barrio). Sin ninguno, 422.
+  Se ordena por distancia (Haversine) y cada item trae `distanceM`.
+- **Privacidad de ubicación**: el filtro por radio y el orden por cercanía se calculan sobre las coordenadas **redondeadas a 3 decimales**
+  (`round(p.latitude::numeric, 3)`, las mismas que se devuelven en `lat`/`lng`), nunca sobre las exactas.
+  Una publicación sin coordenadas propias usa el centro de su barrio, redondeado igual (3 decimales).
+  `distanceM` se devuelve **redondeado a múltiplos de 100 m**.
+- `q` formada solo por palabras vacías del español (por ejemplo `de la`): la consulta de texto queda sin términos y **se ignora el filtro**
+  (no devuelve 0 resultados).
+
+200:
+```json
+{
+  "items": [
+    {
+      "id": "p_ab12...",
+      "type": "found",
+      "title": "Llaves con llavero de osito",
+      "status": "open",
+      "category": { "id": "keys", "name": "Llaves" },
+      "neighborhood": { "id": "palermo", "name": "Palermo" },
+      "occurredOn": "2026-10-24",
+      "timeFrom": "09:00",
+      "timeTo": "12:00",
+      "lat": -34.581,
+      "lng": -58.426,
+      "photoUrls": ["http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90"],
+      "distanceM": 900
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "hasMore": false
+}
+```
+- `lat` y `lng` salen **redondeadas a 3 decimales** (~110 m) o `null`. `timeFrom` y `timeTo` pueden ser `null`.
+- `photoUrls` va ordenado por posición (puede estar vacío). `distanceM` (metros, múltiplo de 100) solo viene con `orden=cercanos`.
+- **No se devuelve** la dirección exacta, la pregunta ni la respuesta de verificación.
+
+Errores (todos 422, `message` en español): falta o es inválido el tipo; categoría, barrio o palabras clave inválidos;
+`lat`/`lng`/`radio` incompletos o fuera de rango; fechas inválidas o `desde` posterior a `hasta`; orden `cercanos` sin centro;
+página o límite fuera de rango; `El barrio no existe.` (con `orden=cercanos` y un barrio desconocido).
+
+### GET `/busquedas-recientes`
+Las últimas 10 búsquedas del usuario, de la más nueva a la más vieja.
+
+200:
+```json
+[
+  {
+    "id": "5eed0000-0000-4000-8000-0000000000b1",
+    "tipo": "found",
+    "categoria": "keys",
+    "q": "llaves",
+    "barrio": "palermo",
+    "lat": -34.579,
+    "lng": -58.4298,
+    "radio": 1500,
+    "periodo": "rango",
+    "desde": "2026-09-27",
+    "hasta": "2026-10-27",
+    "createdAt": "2026-10-27T10:00:00.000Z"
+  }
+]
+```
+Los campos sin valor vienen en `null`. `periodo` es `hoy`, `3d`, `7d` o `rango`; `desde`/`hasta` solo vienen con `rango`.
+
+### POST `/busquedas-recientes`
+Guarda una búsqueda. Body JSON con los mismos nombres que `/publicaciones`: `tipo` (obligatorio), `categoria`, `q`, `barrio` y
+`lat`+`lng`+`radio`; más `periodo` (`hoy` \| `3d` \| `7d` \| `rango`) y `desde`/`hasta` **solo con `rango`** (y entonces son obligatorios, `AAAA-MM-DD`).
+`orden`, `pagina` y `limite` no se guardan.
+
+- El período se guarda tal cual: `hoy`, `3d` y `7d` quedan sin fechas (la app los vuelve a convertir al repetir la búsqueda).
+  Con `rango` se guardan `desde`/`hasta`. Requiere la migración `009_recent_searches_period.sql`.
+- Si ya existe una búsqueda **idéntica**, no se duplica: se actualiza su fecha y vuelve a ser la primera.
+- Conserva solo las últimas 10 por usuario (se recorta en la misma transacción).
+
+201: la búsqueda guardada (misma forma que un elemento de la lista).
+
+Errores: 422 por los mismos motivos que `/publicaciones` (más `El período tiene que ser hoy, 3d, 7d o rango.` y `desde y hasta solo se usan con el período rango.`),
+y `La categoría no existe.` / `El barrio no existe.`
+
+### DELETE `/busquedas-recientes/:id`
+Borra una búsqueda reciente **propia**.
+
+204 sin cuerpo. Errores: 404 `Búsqueda no encontrada.` (no existe, el id no es válido o es de otra persona; no se distingue).
+
+---
+
 ## Complementarios
 
 ### GET `/photos/:id`
@@ -453,6 +572,7 @@ Devuelve una foto.
 - **Foto de perfil vigente**: no requiere token y se puede cachear (`Cache-Control: public, max-age=31536000, immutable`). Una foto de perfil reemplazada da 404.
 - **Foto de un reclamo**: requiere `Authorization: Bearer <token>` y solo la reciben quien reclamó y quien publicó. Se responde con
   `Cache-Control: private, no-store`. Sin token válido da 401; con el token de otra persona da 404 (igual que si no existiera).
+- **Foto de una publicación**: no requiere token y se puede cachear, igual que la de perfil.
 - 404 `Foto no encontrada.` (también si el `:id` no es un UUID).
 - Rate limit: 1000 pedidos / 15 min por IP.
 

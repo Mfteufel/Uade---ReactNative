@@ -23,6 +23,12 @@
       "expo-secure-store",
       "expo-local-authentication",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Hallado usa tu ubicación para buscar objetos y mascotas cerca tuyo."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Hallado usa tus fotos para elegir tu foto de perfil.",

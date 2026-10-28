@@ -7,6 +7,9 @@ const usersRouter = require('./routes/users');
 const photosRouter = require('./routes/photos');
 const { router: claimsRouter, publicationClaimsRouter } = require('./routes/claims');
 const neighborhoodsRouter = require('./routes/neighborhoods');
+const categoriesRouter = require('./routes/categories');
+const searchRouter = require('./routes/search');
+const recentSearchesRouter = require('./routes/recentSearches');
 const { expireDueClaims } = require('./services/claims');
 const { deleteOrphanClaimPhotos } = require('./services/photos');
 const { authLimiter, unauthLimiter, photosLimiter } = require('./middleware/rateLimit');
@@ -44,6 +47,9 @@ app.use('/photos', photosLimiter, photosRouter);
 app.use('/reclamos', unauthLimiter, claimsRouter);
 app.use('/publicaciones/:publicationId/reclamos', unauthLimiter, publicationClaimsRouter);
 app.use('/barrios', unauthLimiter, neighborhoodsRouter);
+app.use('/categorias', unauthLimiter, categoriesRouter);
+app.use('/publicaciones', searchRouter); // solo GET /; sus middlewares van en la ruta (ver routes/search.js)
+app.use('/busquedas-recientes', unauthLimiter, recentSearchesRouter);
 
 app.use(notFound);
 app.use(errorHandler);
