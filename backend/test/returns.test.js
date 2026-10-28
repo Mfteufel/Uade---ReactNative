@@ -109,3 +109,67 @@ test('toRating: arma la respuesta con ids como texto y fecha ISO', () => {
     { id: '7', returnId: '60', ratedUserId: 'u_bruno', positive: false, comment: null, createdAt: '2026-10-28T14:00:00.000Z' }
   );
 });
+
+// ----- agradecimiento: body -----
+
+test('parseThanksBody: message obligatorio, se recorta, de 1 a 500 caracteres', () => {
+  assert.deepEqual(r.parseThanksBody({ message: '  ¡Gracias!  ' }), { thanks: { message: '¡Gracias!' } });
+  for (const raw of [{}, undefined, { message: null }, { message: '' }, { message: '    ' }]) {
+    assert.match(r.parseThanksBody(raw).error.message, /Escribí el mensaje/, JSON.stringify(raw));
+  }
+  assert.equal(r.parseThanksBody({ message: 'a'.repeat(500) }).thanks.message.length, 500);
+  assert.equal(r.parseThanksBody({ message: 'a' }).thanks.message, 'a');
+  assert.match(r.parseThanksBody({ message: 'a'.repeat(501) }).error.message, /500/);
+  assert.equal(r.parseThanksBody({ message: '🙏'.repeat(500) }).error, undefined); // 500 caracteres, no 1000 unidades UTF-16
+});
+
+test('parseThanksBody: misma regla de caracteres que el comentario de la valoración', () => {
+  for (const bad of ['hola\u0000', 'linea\nnueva', 'tab\tadentro', 'x‮y']) {
+    assert.match(r.parseThanksBody({ message: bad }).error.message, /no permitidos/, JSON.stringify(bad));
+    assert.match(r.parseRatingBody({ positive: true, comment: bad }).error.message, /no permitidos/, JSON.stringify(bad));
+  }
+  assert.match(r.parseThanksBody({ message: 5 }).error.message, /texto/);
+  assert.equal(r.parseThanksBody([]).error.status, 422);
+});
+
+// ----- agradecimiento: reglas y su orden -----
+
+const thank = (over = {}) => r.checkCanThank({ ret: ret(), userId: 'u_bruno', now: NOW, alreadyThanked: false, ...over });
+
+test('checkCanThank: solo quien recuperó puede agradecer', () => {
+  assert.equal(thank(), null);
+  assert.deepEqual(thank({ userId: 'u_carla' }), { status: 403, message: 'Solo quien recuperó el objeto puede agradecer.' });
+});
+
+test('checkCanThank: no existe o no es parte -> el mismo 404', () => {
+  const nf = { status: 404, message: 'Devolución no encontrada.' };
+  assert.deepEqual(thank({ ret: null }), nf);
+  assert.deepEqual(thank({ userId: 'u_otro' }), nf);
+});
+
+test('checkCanThank: el plazo de 7 días tiene borde inclusivo', () => {
+  assert.equal(thank({ ret: ret({ created_at: ago(WINDOW_MS) }) }), null);
+  assert.deepEqual(thank({ ret: ret({ created_at: ago(WINDOW_MS + 1) }) }),
+    { status: 422, message: 'El plazo para agradecer venció (7 días desde la devolución).' });
+});
+
+test('checkCanThank: ya hay agradecimiento -> 409', () => {
+  assert.deepEqual(thank({ alreadyThanked: true }), { status: 409, message: 'Ya agradeciste esta devolución.' });
+});
+
+test('checkCanThank: el orden de los errores es 404 > 403 > plazo > ya agradecido', () => {
+  const old = ago(WINDOW_MS + 1);
+  assert.equal(thank({ userId: 'u_otro', ret: ret({ created_at: old }), alreadyThanked: true }).status, 404);
+  assert.equal(thank({ userId: 'u_carla', ret: ret({ created_at: old }), alreadyThanked: true }).status, 403);
+  assert.match(thank({ ret: ret({ created_at: old }), alreadyThanked: true }).message, /plazo/);
+  // Sin quien recuperó, quien devolvió recibe 403 (no es quien recuperó).
+  assert.equal(thank({ userId: 'u_carla', ret: ret({ recovered_by_id: null }) }).status, 403);
+});
+
+test('toThanks: arma la respuesta con returnId como texto y fecha ISO', () => {
+  const created = new Date('2026-10-28T14:00:00.000Z');
+  assert.deepEqual(
+    r.toThanks({ id: 'b1f0c2d4-0000-4000-8000-000000000001', return_id: 60, recipient_id: 'u_carla', message: 'Gracias', created_at: created }),
+    { id: 'b1f0c2d4-0000-4000-8000-000000000001', returnId: '60', recipientId: 'u_carla', message: 'Gracias', createdAt: '2026-10-28T14:00:00.000Z' }
+  );
+});
