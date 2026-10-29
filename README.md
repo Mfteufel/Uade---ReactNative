@@ -99,6 +99,8 @@ Los autores te pasan **en privado** dos archivos. Copialos dentro de `backend/` 
 
 No los subas al repositorio ni los compartas (git los ignora).
 
+`JWT_SECRET` se genera solo la primera vez que corrés el lanzador y se guarda en `backend/.env.demo.local` (se crea si no existe), así que no hay que configurarlo a mano. Si `backend/.env.demo.neon.local` ya trae uno, se usa ese.
+
 ### 3. Levantar backend y app
 
 Por Wi-Fi (misma red):
