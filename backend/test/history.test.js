@@ -87,7 +87,7 @@ test('computeCanThank: solo quien recuperó, dentro del plazo y sin agradecimien
 // ----- toHistoryItem -----
 
 const row = (over = {}) => ({
-  id: '7',
+  id: '7', // pg devuelve bigint como texto
   created_at: ago(1 * DAY),
   role: 'recupere',
   publication_title: 'Celular Samsung',
@@ -105,7 +105,7 @@ const row = (over = {}) => ({
 test('toHistoryItem: arma el item completo, sin teléfono ni email de la contraparte', () => {
   const item = h.toHistoryItem(row(), NOW);
   assert.deepEqual(item, {
-    id: '7',
+    id: 7,
     role: 'recupere',
     date: ago(1 * DAY).toISOString(),
     object: { title: 'Celular Samsung', category: { id: 'electronics', name: 'Electrónica' } },
@@ -115,6 +115,7 @@ test('toHistoryItem: arma el item completo, sin teléfono ni email de la contrap
     canThank: true,
     thanked: false,
   });
+  assert.equal(typeof item.id, 'number');
   const json = JSON.stringify(item);
   assert.doesNotMatch(json, /phone|email/i);
 });

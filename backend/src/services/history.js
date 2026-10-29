@@ -113,7 +113,7 @@ function toHistoryItem(row, now = new Date()) {
   const rated = row.rating_positive !== null && row.rating_positive !== undefined;
   const thanked = row.thanks_id !== null && row.thanks_id !== undefined;
   return {
-    id: String(row.id),
+    id: Number(row.id), // número, igual que el resto de la API de devoluciones (pg devuelve bigint como texto)
     role: row.role,
     date: createdAt,
     object: row.publication_title === null || row.publication_title === undefined

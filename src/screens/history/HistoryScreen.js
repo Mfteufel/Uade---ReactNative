@@ -86,7 +86,7 @@ export default function HistoryScreen({ navigation }) {
     <View style={styles.container}>
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <HistoryCard item={item} onOpenProfile={openProfile} onRate={setRating} onThank={setThanking} />
         )}
