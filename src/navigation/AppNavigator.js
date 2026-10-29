@@ -19,6 +19,8 @@ import ClaimFormScreen from '../screens/claims/ClaimFormScreen';
 import MyClaimsScreen from '../screens/claims/MyClaimsScreen';
 import ClaimDetailScreen from '../screens/claims/ClaimDetailScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
+import PublishScreen from '../screens/publications/PublishScreen';
+import MyPublicationsScreen from '../screens/publications/MyPublicationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -45,6 +47,8 @@ export default function AppNavigator() {
             <Stack.Screen name="ClaimForm" component={ClaimFormScreen} options={{ title: 'Reclamar' }} />
             <Stack.Screen name="ClaimDetail" component={ClaimDetailScreen} options={{ title: 'Reclamo' }} />
             <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'Mi historial' }} />
+            <Stack.Screen name="Publish" component={PublishScreen} options={{ title: 'Publicar' }} />
+            <Stack.Screen name="MyPublications" component={MyPublicationsScreen} options={{ title: 'Mis publicaciones' }} />
           </>
         ) : (
           <>

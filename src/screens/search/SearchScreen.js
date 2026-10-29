@@ -24,6 +24,7 @@ export default function SearchScreen({ navigation }) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button title="Buscar" onPress={onSearch} />
+      <Button variant="link" title="¿Perdiste o encontraste algo? Publicalo" onPress={() => navigation.navigate('Publish')} />
 
       <View style={styles.recents}>
         <Text style={styles.recentsTitle}>Búsquedas recientes</Text>

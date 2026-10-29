@@ -31,8 +31,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Hallado usa tus fotos para elegir tu foto de perfil.",
-          "cameraPermission": "Hallado usa la cámara para sacar tu foto de perfil."
+          "photosPermission": "Hallado usa tus fotos para tu foto de perfil y para tus publicaciones.",
+          "cameraPermission": "Hallado usa la cámara para tu foto de perfil y para fotografiar lo que perdiste o encontraste."
         }
       ],
       [

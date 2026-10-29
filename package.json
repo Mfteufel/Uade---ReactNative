@@ -25,7 +25,15 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "db:preparar": "node scripts/local/preparar.js",
+    "db:refrescar-fechas": "node scripts/local/refrescar-fechas.js",
+    "db:migrar-neon": "node scripts/local/migrar-neon.js",
+    "dev:todo": "node scripts/local/levantar.js",
+    "dev:usb": "node scripts/local/levantar.js --usb",
+    "dev:neon": "node scripts/local/levantar.js --neon",
+    "dev:usb-neon": "node scripts/local/levantar.js --usb --neon",
+    "test:backend": "node scripts/local/test.js"
   },
   "private": true
 }
