@@ -212,7 +212,7 @@ Todo lo siguiente existe hoy en la rama principal.
 Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
 
 - Modo sin conexión.
-- Alertas y publicaciones seguidas.
+- Alertas y publicaciones seguidas: el botón seguir / dejar de seguir ya funciona desde el detalle de la publicación (`POST` y `DELETE /seguidas`), pero las secciones "Mis alertas" y "Seguidas" (listados y novedades) todavía no existen.
 - Historial y valoraciones.
 
 ## Qué no hace el modo Neon
@@ -261,6 +261,7 @@ Se corren en la raíz del proyecto.
 | `npm run db:preparar` | Migra y siembra la base local (solo local). |
 | `npm run db:refrescar-fechas` | Actualiza las fechas de los datos de ejemplo (agregá `-- --neon` para Neon; es para el equipo). |
 | `npm run db:migrar-neon` | Aplica migraciones pendientes en Neon, con confirmación. Es para el equipo. |
+| `npm run web` | Abre la app en el navegador (`expo start --web`). |
 | `npm run test:backend` | Tests del backend con base local (solo local). |
 
 Más detalle del backend (variables de entorno, esquema, migraciones, cuentas del seed) en [`backend/README.md`](backend/README.md). El contrato de la API está en [`API_CONTRACT.md`](API_CONTRACT.md).
