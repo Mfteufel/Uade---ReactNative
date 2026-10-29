@@ -155,8 +155,7 @@ el límite de 3 intentos, la carrera de pedidos simultáneos, el vencimiento, el
 Los datos llevan el prefijo `u_itest_`/`p_itest_` y se borran al terminar. El caso del barrido ejecuta `deleteOrphanClaimPhotos()`, que borra
 **todas** las fotos de reclamo sin usar de más de 24 h de esa base: por eso solo debe correrse en una base de pruebas.
 
-Alternativa local con Docker: `docker run --rm -d --name hallado-test -p 5433:5432 -e POSTGRES_PASSWORD=test postgres:16`
-(cadena `postgresql://postgres:test@localhost:5433/postgres`, prefijo `localhost`).
+Alternativa local: un Postgres instalado a mano con una base vacía dedicada a los tests (prefijo de host `localhost`).
 
 ### Base de desarrollo del equipo (Hallados-dev)
 
