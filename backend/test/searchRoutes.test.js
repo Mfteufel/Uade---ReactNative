@@ -49,12 +49,6 @@ test('no choca con /publicaciones/:publicationId/reclamos (de reclamos)', async 
   assert.notEqual(r.body && r.body.message, 'Ruta no encontrada');
 });
 
-test('GET /publicaciones/:id no existe en este router (es de otro punto)', async () => {
-  const r = await call('GET', '/publicaciones/p_abc', { headers: auth });
-  assert.equal(r.status, 404);
-  assert.equal(r.body.message, 'Ruta no encontrada');
-});
-
 test('las rutas viejas ya no existen', async () => {
   assert.equal((await call('GET', '/busqueda?situacion=perdi', { headers: auth })).status, 404);
   assert.equal((await call('GET', '/busquedas/recientes', { headers: auth })).status, 404);

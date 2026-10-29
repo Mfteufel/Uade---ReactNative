@@ -12,6 +12,7 @@ const searchRouter = require('./routes/search');
 const recentSearchesRouter = require('./routes/recentSearches');
 const publishingRouter = require('./routes/publishing');
 const publicationsRouter = require('./routes/publications');
+const followsRouter = require('./routes/follows');
 const { deleteOrphanPublicationPhotos } = require('./services/publishing');
 const { expireDueClaims } = require('./services/claims');
 const { deleteOrphanClaimPhotos } = require('./services/photos');
@@ -56,6 +57,7 @@ app.use('/busquedas-recientes', unauthLimiter, recentSearchesRouter);
 app.use('/publicaciones', publishingRouter); // sus middlewares van en cada ruta (ver routes/publishing.js)
 // Va último: si estuviera antes, '/:id' atraparía rutas fijas como /publicaciones/mias.
 app.use('/publicaciones', publicationsRouter);
+app.use('/seguidas', unauthLimiter, followsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

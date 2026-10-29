@@ -6,8 +6,8 @@ const { getPublicProfile } = require('./publicProfile');
 async function getPublicationDetail(id, viewerId) {
   const r = await query(
     `SELECT p.id, p.user_id, p.type, p.title, p.description,
-            -- Si ya pasó el vencimiento y nadie actualizó el estado, se muestra vencida.
-            CASE WHEN p.status IN ('open', 'in_claim') AND p.expires_at < now() THEN 'expired'
+            -- Si ya venció y nadie actualizó el estado, se muestra vencida.
+            CASE WHEN p.status IN ('open', 'in_claim') AND p.expires_at <= now() THEN 'expired'
                  ELSE p.status END AS status,
             p.category_id, c.name AS category_name,
             p.neighborhood_id, n.name AS neighborhood_name,
@@ -18,7 +18,9 @@ async function getPublicationDetail(id, viewerId) {
             CASE WHEN p.user_id = $2
                    OR EXISTS (SELECT 1 FROM claims cl
                                WHERE cl.publication_id = p.id AND cl.claimer_id = $2 AND cl.status = 'accepted')
-                 THEN p.exact_address END AS exact_address
+                 THEN p.exact_address END AS exact_address,
+            p.user_id = $2 AS is_owner,
+            EXISTS (SELECT 1 FROM follows f WHERE f.publication_id = p.id AND f.user_id = $2) AS is_following
        FROM publications p
        JOIN categories c ON c.id = p.category_id
        JOIN neighborhoods n ON n.id = p.neighborhood_id
@@ -28,10 +30,11 @@ async function getPublicationDetail(id, viewerId) {
   if (r.rowCount === 0) throw new HttpError(404, 'Publicación no encontrada.');
   const row = r.rows[0];
 
-  const photos = await query(
-    'SELECT photo_id FROM publication_photos WHERE publication_id = $1 ORDER BY position',
-    [id]
-  );
+  // Las fotos y el publicador no dependen entre sí: se piden al mismo tiempo.
+  const [photos, publisher] = await Promise.all([
+    query('SELECT photo_id FROM publication_photos WHERE publication_id = $1 ORDER BY position', [id]),
+    getPublicProfile(row.user_id),
+  ]);
 
   return {
     id: row.id,
@@ -45,8 +48,10 @@ async function getPublicationDetail(id, viewerId) {
     timeFrom: row.time_from,
     timeTo: row.time_to,
     exactAddress: row.exact_address,
+    isOwner: row.is_owner,
+    isFollowing: row.is_following,
     photoUrls: photos.rows.map((photo) => photoUrl(photo.photo_id)),
-    publisher: await getPublicProfile(row.user_id),
+    publisher,
   };
 }
 
