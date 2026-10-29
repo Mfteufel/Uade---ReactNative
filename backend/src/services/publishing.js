@@ -17,16 +17,31 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+// Variante de FORBIDDEN_CHARS que deja pasar el salto de línea (\n, \u000A); solo la usa la descripción.
+const FORBIDDEN_CHARS_MULTILINE = /[\u0000-\u0009\u000B-\u001F\u007F\u202A-\u202E\u2066-\u2069]/;
+
 const fail = (message) => ({ error: { status: 422, message } });
 
+function normalizeMultiline(raw) {
+  return raw
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // missing: el mensaje si es obligatorio y viene vacío. Sin missing, el campo es opcional.
-function cleanText(raw, { label, max, missing }) {
+// multiline: permite saltos de línea (solo la descripción). Se normalizan \r\n y \r a \n, se recortan los espacios de
+// cada línea y se colapsan 3 o más saltos seguidos en 2 (como mucho una línea en blanco). El largo cuenta el texto normalizado.
+function cleanText(raw, { label, max, missing, multiline = false }) {
   const empty = () => (missing ? fail(missing) : { value: null });
   if (raw === undefined || raw === null || raw === '') return empty();
   if (typeof raw !== 'string') return fail(`${label} debe ser texto.`);
-  const s = raw.trim();
+  const s = multiline ? normalizeMultiline(raw) : raw.trim();
   if (s === '') return empty();
-  if (FORBIDDEN_CHARS.test(s)) return fail(`${label} tiene caracteres no permitidos.`);
+  if ((multiline ? FORBIDDEN_CHARS_MULTILINE : FORBIDDEN_CHARS).test(s)) return fail(`${label} tiene caracteres no permitidos.`);
   if (s.length > max) return fail(`${label} no puede superar los ${max} caracteres.`);
   return { value: s };
 }
@@ -62,7 +77,7 @@ function buildPublicationInput(body) {
 
   const title = cleanText(body.title, { label: 'El título', max: MAX_TITLE_LEN, missing: 'Escribí un título.' });
   if (title.error) return title;
-  const description = cleanText(body.description, { label: 'La descripción', max: MAX_DESCRIPTION_LEN });
+  const description = cleanText(body.description, { label: 'La descripción', max: MAX_DESCRIPTION_LEN, multiline: true });
   if (description.error) return description;
 
   if (typeof body.categoryId !== 'string' || !ID_RE.test(body.categoryId)) return fail('Elegí una categoría.');
@@ -174,10 +189,12 @@ async function loadOwnPublication(client, userId, publicationId) {
 }
 
 // Vencen a los 30 días aunque nadie las toque: lo aplicamos antes de leer.
+// Solo vencen las 'open': una 'in_claim' tiene un reclamo aceptado en curso (los pendientes no cambian el estado de la
+// publicación) y no puede pasar a 'expired' mientras tanto. Mismo borde que el resto del backend: expires_at <= now().
 async function expireDuePublications(client, userId) {
   await client.query(
     `UPDATE publications SET status = 'expired', status_changed_at = now()
-      WHERE user_id = $1 AND status IN ('open', 'in_claim') AND expires_at < now()`,
+      WHERE user_id = $1 AND status = 'open' AND expires_at <= now()`,
     [userId]
   );
 }
@@ -268,21 +285,27 @@ async function listMine(userId) {
   });
 }
 
-// Renovar suma 30 días desde hoy. Si ya había vencido, vuelve a quedar abierta.
+// Renovar suma 30 días desde hoy. Si ya había vencido, vuelve a quedar abierta; salvo que tenga un reclamo aceptado
+// (datos viejos, de cuando el barrido también vencía las 'in_claim'): entonces vuelve a 'in_claim'.
 async function renewPublication(userId, publicationId) {
   return withTransaction(async (c) => {
     await expireDuePublications(c, userId);
     const r = await c.query('SELECT status FROM publications WHERE id = $1 AND user_id = $2 FOR UPDATE', [publicationId, userId]);
     if (r.rowCount === 0) throw new HttpError(404, 'Publicación no encontrada.');
     if (r.rows[0].status === 'resolved') throw new HttpError(409, 'Una publicación resuelta no se puede renovar.');
+    let nextStatus = r.rows[0].status;
+    if (nextStatus === 'expired') {
+      const accepted = await c.query(`SELECT 1 FROM claims WHERE publication_id = $1 AND status = 'accepted' LIMIT 1`, [publicationId]);
+      nextStatus = accepted.rowCount > 0 ? 'in_claim' : 'open';
+    }
     await c.query(
       `UPDATE publications
           SET expires_at = now() + interval '30 days',
               renewed_at = now(),
-              status_changed_at = CASE WHEN status = 'expired' THEN now() ELSE status_changed_at END,
-              status = CASE WHEN status = 'expired' THEN 'open' ELSE status END
+              status_changed_at = CASE WHEN status <> $2 THEN now() ELSE status_changed_at END,
+              status = $2
         WHERE id = $1`,
-      [publicationId]
+      [publicationId, nextStatus]
     );
     return loadOwnPublication(c, userId, publicationId);
   });
@@ -290,6 +313,7 @@ async function renewPublication(userId, publicationId) {
 
 module.exports = {
   buildPublicationInput,
+  normalizeMultiline,
   isValidPastDate,
   toOwnPublication,
   savePublicationPhoto,
