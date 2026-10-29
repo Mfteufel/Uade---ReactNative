@@ -58,7 +58,7 @@ src/
   utils/                validators, biometrics, formatos, jwt, devOtp
 backend/
   src/routes/           auth, users, photos, neighborhoods, categories,
-                        search, recentSearches, claims
+                        search, recentSearches, claims, publications, follows
   src/services/         lógica de negocio (sesión, OTP, mail, reputación, reclamos, etc.)
   src/middleware/       auth, errores, rate limit, upload
   migrations/           001 a 009 (SQL) y rollback/
@@ -190,31 +190,10 @@ Todo lo siguiente existe hoy en la rama principal.
 - Resultados con las publicaciones de ejemplo y búsquedas recientes.
 - Las búsquedas por fecha dependen de que los datos de ejemplo sean recientes (ver [Problemas típicos](#problemas-típicos)).
 
-**7. Reclamos**
-- "Mis reclamos" (desde la pantalla principal o desde "Mi perfil"): lista y detalle de reclamos.
-- Con `diego.seed@hallado.com`: reclamo pendiente sobre la publicación de Carla (con tiempo restante para que el publicador responda) y un reclamo anterior rechazado.
-- Con `carla.seed@hallado.com`: reclamo aceptado sobre la publicación de Bruno, y el reclamo pendiente de Diego recibido.
-- Probá aceptar o rechazar el reclamo pendiente desde la cuenta de Carla.
-
-## Qué probar
-
-Todo lo siguiente existe hoy en la rama principal.
-
-**1. Autenticación**
-- Registro en 3 pasos: email, código OTP y contraseña. Ver [Correo y códigos OTP](#correo-y-códigos-otp).
-- Inicio de sesión con un usuario de prueba, cierre de sesión, y "Recuperar contraseña" con un email real registrado por vos.
-- Biometría: Configuración, activar el switch (necesita una huella o rostro cargados en el celular). Al volver a abrir la app se pide el desbloqueo.
-
-**2. Perfil y reputación**
-- "Mi perfil": reputación, puntos, insignias e historial de valoraciones.
-- "Editar perfil": nombre, barrio, teléfono (y si se muestra al aceptar un reclamo) y foto de perfil.
-- Perfiles públicos de otros usuarios.
-- Configuración.
-
-**3. Búsqueda (buscador)**
-- Pantalla principal con filtros: tipo (perdido o encontrado), categoría, barrio, palabras clave, fecha o período ("hoy", "últimos 3 días"), ubicación y radio.
-- Resultados con las publicaciones de ejemplo y búsquedas recientes.
-- Las búsquedas por fecha dependen de que los datos de ejemplo sean recientes (ver [Problemas típicos](#problemas-típicos)).
+**4. Detalle de una publicación**
+- Desde los resultados, tocar una publicación: fotos, datos, estado, barrio y publicador (con acceso a su perfil público).
+- Con una cuenta que no sea la del publicador: "Es mío" (en hallazgos) o "Lo encontré" (en pérdidas) abre el formulario de reclamo, y "Seguir publicación" / "Dejar de seguir".
+- Con la cuenta del publicador: el botón lleva a "Mis publicaciones". La dirección exacta solo la ven el publicador y quien tiene un reclamo aceptado.
 
 **7. Reclamos**
 - "Mis reclamos" (desde la pantalla principal o desde "Mi perfil"): lista y detalle de reclamos.
@@ -226,14 +205,10 @@ Todo lo siguiente existe hoy en la rama principal.
 
 Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
 
-- Detalle de una publicación (y desde ahí, iniciar un reclamo con el formulario "Reclamar").
-- Publicar un hallazgo o una pérdida, y "Mis publicaciones".
 - Modo sin conexión.
 - Punto de encuentro.
 - Alertas y publicaciones seguidas.
 - Historial y valoraciones.
-
-Por ese motivo, el formulario de reclamo todavía no se puede abrir desde la app: el flujo de reclamos se recorre con los reclamos ya cargados en los datos de ejemplo.
 
 ## Qué no hace el modo Neon
 

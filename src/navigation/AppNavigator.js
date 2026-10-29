@@ -20,6 +20,7 @@ import MyClaimsScreen from '../screens/claims/MyClaimsScreen';
 import ClaimDetailScreen from '../screens/claims/ClaimDetailScreen';
 import PublishScreen from '../screens/publications/PublishScreen';
 import MyPublicationsScreen from '../screens/publications/MyPublicationsScreen';
+import PublicationDetailScreen from '../screens/publications/PublicationDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,6 +38,7 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Hallado' }} />
             <Stack.Screen name="Results" component={ResultsScreen} options={{ title: 'Resultados' }} />
+            <Stack.Screen name="PublicationDetail" component={PublicationDetailScreen} options={{ title: 'Publicación' }} />
             <Stack.Screen name="MyProfile" component={MyProfileScreen} options={{ title: 'Mi perfil' }} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar perfil' }} />
             <Stack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Perfil público' }} />
