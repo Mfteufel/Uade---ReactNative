@@ -58,7 +58,7 @@ src/
   utils/                validators, biometrics, formatos, jwt, devOtp
 backend/
   src/routes/           auth, users, photos, neighborhoods, categories,
-                        search, recentSearches, claims
+                        search, recentSearches, claims, publications, follows
   src/services/         lógica de negocio (sesión, OTP, mail, reputación, reclamos, etc.)
   src/middleware/       auth, errores, rate limit, upload
   migrations/           001 a 009 (SQL) y rollback/
@@ -190,6 +190,11 @@ Todo lo siguiente existe hoy en la rama principal.
 - Resultados con las publicaciones de ejemplo y búsquedas recientes.
 - Las búsquedas por fecha dependen de que los datos de ejemplo sean recientes (ver [Problemas típicos](#problemas-típicos)).
 
+**4. Detalle de una publicación**
+- Desde los resultados, tocar una publicación: fotos, datos, estado, barrio y publicador (con acceso a su perfil público).
+- Con una cuenta que no sea la del publicador: "Es mío" (en hallazgos) o "Lo encontré" (en pérdidas) abre el formulario de reclamo, y "Seguir publicación" / "Dejar de seguir".
+- Con la cuenta del publicador: el botón lleva a "Mis publicaciones". La dirección exacta solo la ven el publicador y quien tiene un reclamo aceptado.
+
 **7. Reclamos**
 - "Mis reclamos" (desde la pantalla principal o desde "Mi perfil"): lista y detalle de reclamos.
 - Con `diego.seed@hallado.com`: reclamo pendiente sobre la publicación de Carla (con tiempo restante para que el publicador responda) y un reclamo anterior rechazado.
@@ -198,7 +203,7 @@ Todo lo siguiente existe hoy en la rama principal.
 
 **8. Punto de encuentro**
 - Con `carla.seed@hallado.com` o `bruno.seed@hallado.com`: "Mis reclamos", el reclamo aceptado sobre la publicación de Bruno, "Coordinar punto de encuentro". Muestra el lugar ya acordado ("Estación Primera Junta") y el botón "Cómo llegar", que abre Google Maps (o la app de mapas) con esa dirección como destino.
-- Proponer, aceptar o sugerir otro lugar necesita un reclamo aceptado que todavía no tenga lugar vigente, y los datos de ejemplo no traen uno. El reclamo pendiente de Diego tampoco sirve: en los datos de ejemplo su publicación ya figura "en reclamo", así que aceptarlo responde 409. Hasta que el detalle de publicación permita abrir el formulario "Reclamar", ese flujo se prueba creando una publicación y un reclamo por la API (ver [`API_CONTRACT.md`](API_CONTRACT.md), secciones "Reclamos" y "Punto de encuentro").
+- Proponer, aceptar o sugerir otro lugar necesita un reclamo aceptado que todavía no tenga lugar vigente, y los datos de ejemplo no traen uno. El reclamo pendiente de Diego tampoco sirve: en los datos de ejemplo su publicación ya figura "en reclamo", así que aceptarlo responde 409. Para probar ese flujo, creá un reclamo desde el detalle de una publicación (con una cuenta que no sea la del publicador, botón "Es mío" o "Lo encontré") y pedile al publicador que lo acepte desde "Mis reclamos"; el punto de encuentro se coordina desde el reclamo aceptado (ver [`API_CONTRACT.md`](API_CONTRACT.md), secciones "Reclamos" y "Punto de encuentro").
 - Quien tiene el objeto propone primero: el publicador si la publicación es de algo encontrado, o quien reclamó "Lo encontré" si es de algo perdido. La otra parte acepta el lugar o sugiere otro.
 - Solo coordina el lugar. Confirmar la devolución y las valoraciones todavía no están.
 
@@ -206,12 +211,9 @@ Todo lo siguiente existe hoy en la rama principal.
 
 Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
 
-- Detalle de una publicación (y desde ahí, iniciar un reclamo con el formulario "Reclamar").
 - Modo sin conexión.
 - Alertas y publicaciones seguidas.
 - Historial y valoraciones.
-
-Por ese motivo, el formulario de reclamo todavía no se puede abrir desde la app: el flujo de reclamos se recorre con los reclamos ya cargados en los datos de ejemplo.
 
 ## Qué no hace el modo Neon
 
