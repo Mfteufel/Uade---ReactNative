@@ -199,14 +199,19 @@ Todo lo siguiente existe hoy en la rama principal.
 - "Mis reclamos" (desde la pantalla principal o desde "Mi perfil"): lista y detalle de reclamos.
 - Con `diego.seed@hallado.com`: reclamo pendiente sobre la publicación de Carla (con tiempo restante para que el publicador responda) y un reclamo anterior rechazado.
 - Con `carla.seed@hallado.com`: reclamo aceptado sobre la publicación de Bruno, y el reclamo pendiente de Diego recibido.
-- Probá aceptar o rechazar el reclamo pendiente desde la cuenta de Carla.
+- Probá rechazar el reclamo pendiente desde la cuenta de Carla. Aceptarlo responde 409: en los datos de ejemplo su publicación ya figura "en reclamo" y solo se acepta un reclamo sobre una publicación abierta.
+
+**8. Punto de encuentro**
+- Con `carla.seed@hallado.com` o `bruno.seed@hallado.com`: "Mis reclamos", el reclamo aceptado sobre la publicación de Bruno, "Coordinar punto de encuentro". Muestra el lugar ya acordado ("Estación Primera Junta") y el botón "Cómo llegar", que abre Google Maps (o la app de mapas) con esa dirección como destino.
+- Proponer, aceptar o sugerir otro lugar necesita un reclamo aceptado que todavía no tenga lugar vigente, y los datos de ejemplo no traen uno. El reclamo pendiente de Diego tampoco sirve: en los datos de ejemplo su publicación ya figura "en reclamo", así que aceptarlo responde 409. Para probar ese flujo, creá un reclamo desde el detalle de una publicación (con una cuenta que no sea la del publicador, botón "Es mío" o "Lo encontré") y pedile al publicador que lo acepte desde "Mis reclamos"; el punto de encuentro se coordina desde el reclamo aceptado (ver [`API_CONTRACT.md`](API_CONTRACT.md), secciones "Reclamos" y "Punto de encuentro").
+- Quien tiene el objeto propone primero: el publicador si la publicación es de algo encontrado, o quien reclamó "Lo encontré" si es de algo perdido. La otra parte acepta el lugar o sugiere otro.
+- Solo coordina el lugar. Confirmar la devolución y las valoraciones todavía no están.
 
 ## Estado de la entrega
 
 Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
 
 - Modo sin conexión.
-- Punto de encuentro.
 - Alertas y publicaciones seguidas.
 - Historial y valoraciones.
 

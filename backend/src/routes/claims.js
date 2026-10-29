@@ -4,6 +4,7 @@ const { usersLimiter, photoUploadLimiter } = require('../middleware/rateLimit');
 const { rejectIfTooLarge, uploadGate, parsePhoto } = require('../middleware/upload');
 const { saveClaimPhoto } = require('../services/photos');
 const claims = require('../services/claims');
+const meetings = require('../services/meetingPoints');
 const { HttpError } = require('../middleware/errors');
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -48,6 +49,22 @@ router.get('/:id', handle(async (req, res) => res.json(await claims.getClaim(req
 router.post('/:id/aceptar', handle(async (req, res) => res.json(await claims.acceptClaim(req.user.id, validClaimId(req.params.id)))));
 router.post('/:id/rechazar', handle(async (req, res) => res.json(await claims.rejectClaim(req.user.id, validClaimId(req.params.id)))));
 
+// Punto de encuentro del reclamo aceptado (punto 8). Solo lo ven y lo modifican las dos partes.
+router.get('/:id/punto-encuentro', handle(async (req, res) => {
+  res.json(await meetings.getMeeting(req.user.id, validClaimId(req.params.id)));
+}));
+router.post('/:id/punto-encuentro', handle(async (req, res) => {
+  res.status(201).json(await meetings.proposeMeeting(req.user.id, validClaimId(req.params.id), req.body));
+}));
+
+// /puntos-encuentro/*
+const meetingPointsRouter = Router();
+meetingPointsRouter.use(requireAuth, usersLimiter);
+meetingPointsRouter.post('/:id/aceptar', handle(async (req, res) => {
+  const id = validId(req.params.id, 'Punto de encuentro no encontrado.');
+  res.json(await meetings.acceptMeeting(req.user.id, id));
+}));
+
 // /publicaciones/:publicationId/reclamos/*
 // Se monta con su propio prefijo: el resto de /publicaciones lo define el router de publicaciones.
 const publicationClaimsRouter = Router({ mergeParams: true });
@@ -63,4 +80,4 @@ publicationClaimsRouter.post('/', handle(async (req, res) => {
   res.status(201).json(await claims.createClaim(req.user.id, validPublicationId(req), req.body));
 }));
 
-module.exports = { router, publicationClaimsRouter };
+module.exports = { router, publicationClaimsRouter, meetingPointsRouter };

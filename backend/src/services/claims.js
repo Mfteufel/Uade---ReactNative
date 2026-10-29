@@ -368,6 +368,7 @@ module.exports = {
   claimTypeFor,
   normalizeAnswer,
   answersMatch,
+  cleanText,
   buildClaimInput,
   claimBlock,
   toClaimView,

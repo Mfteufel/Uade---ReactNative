@@ -5,7 +5,7 @@ const cors = require('cors');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const photosRouter = require('./routes/photos');
-const { router: claimsRouter, publicationClaimsRouter } = require('./routes/claims');
+const { router: claimsRouter, publicationClaimsRouter, meetingPointsRouter } = require('./routes/claims');
 const neighborhoodsRouter = require('./routes/neighborhoods');
 const categoriesRouter = require('./routes/categories');
 const searchRouter = require('./routes/search');
@@ -50,6 +50,7 @@ app.use('/users', unauthLimiter, usersRouter);
 app.use('/photos', photosLimiter, photosRouter);
 app.use('/reclamos', unauthLimiter, claimsRouter);
 app.use('/publicaciones/:publicationId/reclamos', unauthLimiter, publicationClaimsRouter);
+app.use('/puntos-encuentro', unauthLimiter, meetingPointsRouter);
 app.use('/barrios', unauthLimiter, neighborhoodsRouter);
 app.use('/categorias', unauthLimiter, categoriesRouter);
 app.use('/publicaciones', searchRouter); // solo GET /; sus middlewares van en la ruta (ver routes/search.js)

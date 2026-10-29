@@ -18,6 +18,7 @@ import SettingsScreen from '../screens/settings/SettingsScreen';
 import ClaimFormScreen from '../screens/claims/ClaimFormScreen';
 import MyClaimsScreen from '../screens/claims/MyClaimsScreen';
 import ClaimDetailScreen from '../screens/claims/ClaimDetailScreen';
+import MeetingPointScreen from '../screens/claims/MeetingPointScreen';
 import PublishScreen from '../screens/publications/PublishScreen';
 import MyPublicationsScreen from '../screens/publications/MyPublicationsScreen';
 import PublicationDetailScreen from '../screens/publications/PublicationDetailScreen';
@@ -47,6 +48,8 @@ export default function AppNavigator() {
             {/* Params: { publicationId }. El detalle de publicación (punto 4) navega acá desde "Es mío" / "Lo encontré". */}
             <Stack.Screen name="ClaimForm" component={ClaimFormScreen} options={{ title: 'Reclamar' }} />
             <Stack.Screen name="ClaimDetail" component={ClaimDetailScreen} options={{ title: 'Reclamo' }} />
+            {/* Params: { claimId }. Solo se entra desde un reclamo aceptado (punto 8). */}
+            <Stack.Screen name="MeetingPoint" component={MeetingPointScreen} options={{ title: 'Punto de encuentro' }} />
             <Stack.Screen name="Publish" component={PublishScreen} options={{ title: 'Publicar' }} />
             <Stack.Screen name="MyPublications" component={MyPublicationsScreen} options={{ title: 'Mis publicaciones' }} />
           </>
