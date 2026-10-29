@@ -19,8 +19,10 @@ import ClaimFormScreen from '../screens/claims/ClaimFormScreen';
 import MyClaimsScreen from '../screens/claims/MyClaimsScreen';
 import ClaimDetailScreen from '../screens/claims/ClaimDetailScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
+import MeetingPointScreen from '../screens/claims/MeetingPointScreen';
 import PublishScreen from '../screens/publications/PublishScreen';
 import MyPublicationsScreen from '../screens/publications/MyPublicationsScreen';
+import PublicationDetailScreen from '../screens/publications/PublicationDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -38,6 +40,7 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Hallado' }} />
             <Stack.Screen name="Results" component={ResultsScreen} options={{ title: 'Resultados' }} />
+            <Stack.Screen name="PublicationDetail" component={PublicationDetailScreen} options={{ title: 'Publicación' }} />
             <Stack.Screen name="MyProfile" component={MyProfileScreen} options={{ title: 'Mi perfil' }} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Editar perfil' }} />
             <Stack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Perfil público' }} />
@@ -47,6 +50,8 @@ export default function AppNavigator() {
             <Stack.Screen name="ClaimForm" component={ClaimFormScreen} options={{ title: 'Reclamar' }} />
             <Stack.Screen name="ClaimDetail" component={ClaimDetailScreen} options={{ title: 'Reclamo' }} />
             <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'Mi historial' }} />
+            {/* Params: { claimId }. Solo se entra desde un reclamo aceptado (punto 8). */}
+            <Stack.Screen name="MeetingPoint" component={MeetingPointScreen} options={{ title: 'Punto de encuentro' }} />
             <Stack.Screen name="Publish" component={PublishScreen} options={{ title: 'Publicar' }} />
             <Stack.Screen name="MyPublications" component={MyPublicationsScreen} options={{ title: 'Mis publicaciones' }} />
           </>

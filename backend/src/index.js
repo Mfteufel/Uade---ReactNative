@@ -5,7 +5,7 @@ const cors = require('cors');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const photosRouter = require('./routes/photos');
-const { router: claimsRouter, publicationClaimsRouter } = require('./routes/claims');
+const { router: claimsRouter, publicationClaimsRouter, meetingPointsRouter } = require('./routes/claims');
 const neighborhoodsRouter = require('./routes/neighborhoods');
 const categoriesRouter = require('./routes/categories');
 const searchRouter = require('./routes/search');
@@ -13,6 +13,8 @@ const recentSearchesRouter = require('./routes/recentSearches');
 const historyRouter = require('./routes/history');
 const returnsRouter = require('./routes/returns');
 const publishingRouter = require('./routes/publishing');
+const publicationsRouter = require('./routes/publications');
+const followsRouter = require('./routes/follows');
 const { deleteOrphanPublicationPhotos } = require('./services/publishing');
 const { expireDueClaims } = require('./services/claims');
 const { deleteOrphanClaimPhotos } = require('./services/photos');
@@ -50,6 +52,7 @@ app.use('/users', unauthLimiter, usersRouter);
 app.use('/photos', photosLimiter, photosRouter);
 app.use('/reclamos', unauthLimiter, claimsRouter);
 app.use('/publicaciones/:publicationId/reclamos', unauthLimiter, publicationClaimsRouter);
+app.use('/puntos-encuentro', unauthLimiter, meetingPointsRouter);
 app.use('/barrios', unauthLimiter, neighborhoodsRouter);
 app.use('/categorias', unauthLimiter, categoriesRouter);
 app.use('/publicaciones', searchRouter); // solo GET /; sus middlewares van en la ruta (ver routes/search.js)
@@ -57,6 +60,9 @@ app.use('/busquedas-recientes', unauthLimiter, recentSearchesRouter);
 app.use('/historial', unauthLimiter, historyRouter);
 app.use('/devoluciones', unauthLimiter, returnsRouter);
 app.use('/publicaciones', publishingRouter); // sus middlewares van en cada ruta (ver routes/publishing.js)
+// Va último: si estuviera antes, '/:id' atraparía rutas fijas como /publicaciones/mias.
+app.use('/publicaciones', publicationsRouter);
+app.use('/seguidas', unauthLimiter, followsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

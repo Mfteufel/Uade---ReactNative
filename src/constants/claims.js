@@ -11,3 +11,6 @@ export const CLAIM_STATUS = {
 export const CLAIM_TYPE_LABEL = { mine: 'Es mío', found: 'Lo encontré' };
 
 export const CLAIM_ROLE_LABEL = { claimer: 'Lo envié yo', publisher: 'Lo recibí' };
+
+// Estados del punto de encuentro vigente (los valores son los de la API).
+export const MEETING_STATUS_LABEL = { proposed: 'Esperando respuesta', accepted: 'Acordado' };

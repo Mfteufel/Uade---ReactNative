@@ -46,9 +46,11 @@ Cuando se supera un límite: `429` con
 | `POST /users/me/photo` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
 | `POST /publicaciones/fotos` | 30 subidas / hora (cuenta también las fallidas) | Usuario |
 | `GET /photos/:id` | 1000 pedidos / 15 min | IP |
-| Todo `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
-| `/reclamos/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` sin token válido | 100 respuestas 401 / 15 min | IP |
+| Todo `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
+| `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /reclamos/foto` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
+| `GET /publicaciones/:id` y todo `/seguidas/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
+| `GET /publicaciones/:id` y `/seguidas/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 
 ### Códigos de error usados
 
@@ -456,6 +458,66 @@ Catálogo de barrios para los formularios. **Ruta mínima agregada para "Lo enco
 
 ---
 
+## Punto de encuentro (punto 8)
+
+Rutas con token; cuentan para el rate limit de `/users/*` (300 / 15 min por usuario). Valores reales de `meeting_points.status`:
+`proposed` (propuesto, espera respuesta), `accepted` (acordado) y `counter_proposed` (reemplazado por otra propuesta; solo queda en el historial).
+
+Reglas (las aplica el servidor; la app solo las muestra):
+- Solo existe para un reclamo `accepted` y solo lo ven y modifican **las dos partes** del reclamo. A cualquier otra persona le responde 404.
+- **Quien tiene el objeto propone el primer lugar**: el publicador si la publicación es `found`; el solicitante si es `lost` ("Lo encontré").
+- Con una propuesta `proposed`, **responde la parte que NO propuso**: la acepta o sugiere otro lugar. Quien propuso no puede aceptar su propia propuesta ni proponer de nuevo.
+- Una sugerencia pasa la propuesta vigente a `counter_proposed` (con `responded_at`) e inserta la nueva con `replaces_id` apuntando a ella, en una sola transacción.
+  Hay un solo punto vigente (`proposed` o `accepted`) por reclamo; el reclamo se bloquea (`FOR UPDATE`) para que dos pedidos simultáneos se atiendan de a uno.
+- **Un punto `accepted` es definitivo** (decisión del equipo: el TPO solo pide aceptar o sugerir otro sobre una propuesta). No cambia el estado del reclamo ni de la publicación.
+- Se guarda `address` (obligatoria, máx. 200) y `notes` (opcional, máx. 280). No se usa `meet_at` ni se cargan coordenadas (no hay geocodificación ni agenda).
+  "Cómo llegar" lo resuelve la app con la dirección, abriendo Google Maps fuera de Hallado.
+
+**MeetingView** (lo que devuelven las tres rutas)
+```json
+{
+  "claimId": "c_...",
+  "iHaveTheObject": false,
+  "otherParty": { "id": "u_...", "name": "Bruno" },
+  "meetingPoint": {
+    "id": "m_...", "address": "Estación Primera Junta", "notes": "Entrada principal",
+    "latitude": null, "longitude": null, "status": "proposed",
+    "proposedByMe": false, "proposedBy": { "id": "u_...", "name": "Bruno" },
+    "createdAt": "2026-10-25T10:00:00.000Z", "respondedAt": null
+  },
+  "canPropose": true,
+  "canAccept": true,
+  "reason": null
+}
+```
+- `meetingPoint` es `null` si todavía no hay ninguna propuesta vigente.
+- `canPropose` / `canAccept` dicen qué puede hacer **quien consulta** ahora; si ninguna es `true`, `reason` explica por qué (espera, ya acordado o no le corresponde).
+- `latitude` / `longitude` solo vienen si el punto las tiene cargadas (por ejemplo, datos del seed); si no, `null`.
+
+### GET `/reclamos/:id/punto-encuentro`
+200: `MeetingView`.
+
+Errores: 404 `Reclamo no encontrado.` (también si no es parte) · 409 `La coordinación del encuentro se habilita cuando el reclamo está aceptado.`
+
+### POST `/reclamos/:id/punto-encuentro`
+Propone el primer lugar o sugiere otro. Body: `{ "address": "Av. Cabildo 2000", "notes": "opcional" }`. 201: `MeetingView` con el estado nuevo.
+
+Errores:
+- 403 `Todavía no hay un lugar propuesto. Lo propone quien tiene el objeto.`
+- 404 `Reclamo no encontrado.`
+- 409 `La coordinación del encuentro se habilita cuando el reclamo está aceptado.` / `El punto de encuentro ya fue acordado.` / `Esperando la respuesta de la otra persona.` / `El punto de encuentro cambió, actualizá la pantalla.`
+- 422 `La dirección es obligatoria.` / textos largos o con caracteres no permitidos.
+
+### POST `/puntos-encuentro/:id/aceptar`
+Sin body. La parte que no propuso acepta el lugar vigente. 200: `MeetingView`.
+
+Errores:
+- 403 `No podés aceptar tu propia propuesta: responde la otra persona.`
+- 404 `Punto de encuentro no encontrado.` (también si no es parte del reclamo)
+- 409 `El punto de encuentro ya fue acordado.` / `Esta propuesta fue reemplazada por otra. Actualizá la pantalla.` / `La coordinación del encuentro se habilita cuando el reclamo está aceptado.`
+
+---
+
 ## Buscador (punto 3)
 
 Todas estas rutas requieren token. Rate limit: el de `/users/*` (300 / 15 min por usuario).
@@ -837,11 +899,59 @@ Sin token. 200: `{ "status": "ok" }`.
 
 ---
 
+## Detalle de publicación (punto 4)
+
+### GET `/publicaciones/:id`
+Detalle de una publicación. Requiere token. Rate limit: los mismos de `/users/*`.
+
+200:
+```json
+{
+  "id": "p_ab12...",
+  "type": "found",
+  "title": "Llaves con llavero de osito",
+  "description": "Encontré un juego de 3 llaves con un llavero de peluche en la plaza.",
+  "status": "open",
+  "category": { "id": "keys", "name": "Llaves" },
+  "neighborhood": { "id": "palermo", "name": "Palermo" },
+  "occurredOn": "2026-10-24",
+  "timeFrom": "09:00",
+  "timeTo": "12:00",
+  "exactAddress": null,
+  "isOwner": false,
+  "isFollowing": false,
+  "photoUrls": ["http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90"],
+  "publisher": { /* igual que GET /users/:id/public */ }
+}
+```
+- `exactAddress`: solo para quien publicó o quien tiene un reclamo `accepted` sobre esta publicación. Para el resto llega `null`.
+- `isOwner`: si quien pide es quien publicó. `isFollowing`: si quien pide la sigue.
+- No incluye la pregunta ni la respuesta de verificación, ni el mail o el teléfono del publicador.
+- `status`: si ya llegó el vencimiento y seguía `open` o `in_claim`, llega `expired`.
+- `photoUrls` va ordenado por posición (puede estar vacío) y se piden con `GET /photos/:id`, sin token.
+  `description`, `timeFrom` y `timeTo` pueden ser `null`.
+
+Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` (también si el `:id` tiene formato inválido).
+Además, los generales de Convenciones (500 y 503).
+
+### POST `/seguidas`
+Seguir una publicación. Requiere token. Body: `{ "publicacionId": "p_ab12..." }`
+
+204 sin cuerpo. Seguir dos veces la misma publicación no es un error.
+
+Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` (no existe, o falta `publicacionId` o tiene formato inválido).
+
+### DELETE `/seguidas/:publicacionId`
+Dejar de seguir una publicación. Requiere token. 204 sin cuerpo, aunque no la siguiera.
+
+Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` si el id tiene formato inválido.
+
+---
+
 ## Pendiente para el backend (todavía no implementado)
 
 - **Reclamos (punto 7)**: implementados, ver la sección "Reclamos". El teléfono de la otra parte ya lo decide el servidor en `Claim.otherParty.phone`.
-  Pendiente de otros puntos: el detalle de publicación (punto 4) tiene que mostrar `exact_address` también a quien tenga un reclamo `accepted`
-  sobre esa publicación (consultando `claims`), y el punto de encuentro (punto 8) todavía no tiene rutas.
+  Pendiente de otros puntos: el punto de encuentro (punto 8) ya tiene sus rutas (ver "Punto de encuentro"); queda fuera la confirmación de la devolución (`returns`).
 - **Esquema de base ya creado, API pendiente**: las migraciones 004 a 008 (probadas solo en una rama de pruebas, no en producción)
   fijan estos estados exactos. Publicaciones: `open`, `in_claim`, `resolved`, `expired`. Reclamos: `pending`, `accepted`, `rejected`, `expired`
   (sin `cancelled`). Puntos de encuentro: `proposed`, `accepted`, `counter_proposed`. Tipos: publicación `lost`/`found`; reclamo `mine`/`found`.
