@@ -55,10 +55,9 @@ export default function ResultsScreen({ navigation, route }) {
     <View style={styles.empty}>
       <Text style={styles.emptyTitle}>No encontramos publicaciones con esos criterios.</Text>
       <Text style={styles.hint}>Probá con otros filtros o dejá todo listo para cuando aparezca algo.</Text>
-      {/* TODO (punto 5): abrir el formulario de publicación en vez del aviso. */}
       <Button
         title={filters.situacion === 'perdi' ? 'Publicar mi pérdida' : 'Publicar mi hallazgo'}
-        onPress={() => soon('Publicar llega con el punto 5.')}
+        onPress={() => navigation.navigate('Publish', { type: filters.situacion === 'perdi' ? 'lost' : 'found' })}
       />
       {/* TODO (punto 9): crear una alerta con estos criterios en vez del aviso. */}
       <Button variant="link" title="Guardar como alerta" onPress={() => soon('Las alertas llegan con el punto 9.')} />
