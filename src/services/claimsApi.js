@@ -83,3 +83,9 @@ export const acceptMeetingPoint = async (meetingPointId) => {
   requireRealApi();
   return api.post(`/puntos-encuentro/${enc(meetingPointId)}/aceptar`).then(unwrap);
 };
+
+// Quien recupera el objeto confirma la devolución. Devuelve el mismo estado del encuentro, ya con la devolución registrada.
+export const confirmReturn = async (claimId) => {
+  requireRealApi();
+  return api.post(`/reclamos/${enc(claimId)}/devolucion`).then(unwrap);
+};

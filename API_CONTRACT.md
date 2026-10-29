@@ -456,7 +456,9 @@ Reglas (las aplica el servidor; la app solo las muestra):
 - Con una propuesta `proposed`, **responde la parte que NO propuso**: la acepta o sugiere otro lugar. Quien propuso no puede aceptar su propia propuesta ni proponer de nuevo.
 - Una sugerencia pasa la propuesta vigente a `counter_proposed` (con `responded_at`) e inserta la nueva con `replaces_id` apuntando a ella, en una sola transacción.
   Hay un solo punto vigente (`proposed` o `accepted`) por reclamo; el reclamo se bloquea (`FOR UPDATE`) para que dos pedidos simultáneos se atiendan de a uno.
-- **Un punto `accepted` es definitivo** (decisión del equipo: el TPO solo pide aceptar o sugerir otro sobre una propuesta). No cambia el estado del reclamo ni de la publicación.
+- **Un punto `accepted` es definitivo** (decisión del equipo: el TPO solo pide aceptar o sugerir otro sobre una propuesta). Acordar el lugar no cambia el estado del reclamo ni de la publicación.
+- **La devolución la confirma quien recupera el objeto** (la otra parte de quien lo tiene), con el punto ya `accepted`. Ver `POST /reclamos/:id/devolucion`.
+  No la confirma quien devuelve porque `returns.user_id` suma puntos de reputación a quien devolvió.
 - Se guarda `address` (obligatoria, máx. 200) y `notes` (opcional, máx. 280). No se usa `meet_at` ni se cargan coordenadas (no hay geocodificación ni agenda).
   "Cómo llegar" lo resuelve la app con la dirección, abriendo Google Maps fuera de Hallado.
 
@@ -474,9 +476,13 @@ Reglas (las aplica el servidor; la app solo las muestra):
   },
   "canPropose": true,
   "canAccept": true,
-  "reason": null
+  "reason": null,
+  "completedReturn": null,
+  "canConfirmReturn": false
 }
 ```
+- `completedReturn` es `null` hasta que se confirma la devolución; después es `{ "id": 42, "createdAt": "2026-10-26T09:00:00.000Z" }`. El `id` es el de la fila de `returns`, como número.
+- `canConfirmReturn` es `true` solo para quien recupera el objeto, con el punto `accepted` y sin devolución previa.
 - `meetingPoint` es `null` si todavía no hay ninguna propuesta vigente.
 - `canPropose` / `canAccept` dicen qué puede hacer **quien consulta** ahora; si ninguna es `true`, `reason` explica por qué (espera, ya acordado o no le corresponde).
 - `latitude` / `longitude` solo vienen si el punto las tiene cargadas (por ejemplo, datos del seed); si no, `null`.
@@ -502,6 +508,26 @@ Errores:
 - 403 `No podés aceptar tu propia propuesta: responde la otra persona.`
 - 404 `Punto de encuentro no encontrado.` (también si no es parte del reclamo)
 - 409 `El punto de encuentro ya fue acordado.` / `Esta propuesta fue reemplazada por otra. Actualizá la pantalla.` / `La coordinación del encuentro se habilita cuando el reclamo está aceptado.`
+
+### POST `/reclamos/:id/devolucion`
+Sin body. Quien recupera el objeto confirma que la devolución se concretó. 201: `MeetingView` con `completedReturn` completo.
+
+El servidor, en una sola transacción (bloquea primero la publicación y después el reclamo):
+1. Inserta una fila en `returns`. Todos los valores salen del reclamo, no del pedido:
+   - `user_id` = quien devolvió, o sea quien tenía el objeto (el publicador si la publicación es `found`; el solicitante si es `lost`).
+   - `recovered_by_id` = quien lo recuperó (la otra parte, que es quien llama).
+   - `claim_id` = el reclamo.
+   - `meeting_point_id` = el punto de encuentro `accepted` vigente.
+   - `created_at` = la hora del servidor al confirmar.
+2. Pasa la publicación a `resolved` y actualiza su `status_changed_at`.
+
+El reclamo sigue `accepted` (no hay estado nuevo). Hay una sola devolución por reclamo (`UNIQUE (claim_id)`).
+Con la devolución registrada se puede valorar durante 7 días (punto 10) y suma a `completedReturns` de `user_id`.
+
+Errores:
+- 403 `La devolución la confirma quien recupera el objeto.`
+- 404 `Reclamo no encontrado.` (también si no es parte)
+- 409 `La coordinación del encuentro se habilita cuando el reclamo está aceptado.` / `Primero tienen que acordar el punto de encuentro.` / `La devolución ya fue confirmada.`
 
 ---
 
@@ -764,7 +790,7 @@ Sin token. 200: `{ "status": "ok" }`.
 
 - **Reclamos (punto 7)**: implementados, ver la sección "Reclamos". El teléfono de la otra parte ya lo decide el servidor en `Claim.otherParty.phone`.
   Pendiente de otros puntos: el detalle de publicación (punto 4) tiene que mostrar `exact_address` también a quien tenga un reclamo `accepted`
-  sobre esa publicación (consultando `claims`), y el punto de encuentro (punto 8) ya tiene sus rutas (ver "Punto de encuentro"); queda fuera la confirmación de la devolución (`returns`).
+  sobre esa publicación (consultando `claims`), y el punto de encuentro (punto 8) ya tiene sus rutas y la confirmación de la devolución, que llena `returns` (ver "Punto de encuentro").
 - **Esquema de base ya creado, API pendiente**: las migraciones 004 a 008 (probadas solo en una rama de pruebas, no en producción)
   fijan estos estados exactos. Publicaciones: `open`, `in_claim`, `resolved`, `expired`. Reclamos: `pending`, `accepted`, `rejected`, `expired`
   (sin `cancelled`). Puntos de encuentro: `proposed`, `accepted`, `counter_proposed`. Tipos: publicación `lost`/`found`; reclamo `mine`/`found`.
