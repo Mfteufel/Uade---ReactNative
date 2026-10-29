@@ -654,7 +654,7 @@ Respuesta `201`:
 ```json
 {
   "id": "7",
-  "returnId": "60",
+  "returnId": 60,
   "ratedUserId": "u_seed_bruno",
   "positive": true,
   "comment": "Muy amable y puntual",
@@ -690,7 +690,7 @@ Respuesta `201`:
 ```json
 {
   "id": "b1f0c2d4-0000-4000-8000-000000000001",
-  "returnId": "60",
+  "returnId": 60,
   "recipientId": "u_seed_carla",
   "message": "¡Gracias por devolverme el celular!",
   "createdAt": "2026-10-28T14:00:00.000Z"

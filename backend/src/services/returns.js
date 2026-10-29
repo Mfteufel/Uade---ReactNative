@@ -96,7 +96,7 @@ const iso = (d) => (d instanceof Date ? d.toISOString() : d);
 function toRating(row) {
   return {
     id: String(row.id),
-    returnId: String(row.return_id),
+    returnId: Number(row.return_id), // número, igual que el id de /historial
     ratedUserId: row.rated_user_id,
     positive: row.positive,
     comment: row.comment ?? null,
@@ -107,7 +107,7 @@ function toRating(row) {
 function toThanks(row) {
   return {
     id: row.id,
-    returnId: String(row.return_id),
+    returnId: Number(row.return_id), // número, igual que el id de /historial
     recipientId: row.recipient_id,
     message: row.message,
     createdAt: iso(row.created_at),

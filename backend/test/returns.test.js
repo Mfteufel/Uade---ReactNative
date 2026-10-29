@@ -102,11 +102,11 @@ test('checkCanRate: el orden de los errores es 404 > sin contraparte > plazo > y
 
 // ----- respuesta -----
 
-test('toRating: arma la respuesta con ids como texto y fecha ISO', () => {
+test('toRating: arma la respuesta con returnId como número y fecha ISO', () => {
   const created = new Date('2026-10-28T14:00:00.000Z');
   assert.deepEqual(
-    r.toRating({ id: 7, return_id: 60, rated_user_id: 'u_bruno', positive: false, comment: null, created_at: created }),
-    { id: '7', returnId: '60', ratedUserId: 'u_bruno', positive: false, comment: null, createdAt: '2026-10-28T14:00:00.000Z' }
+    r.toRating({ id: 7, return_id: '60', rated_user_id: 'u_bruno', positive: false, comment: null, created_at: created }),
+    { id: '7', returnId: 60, ratedUserId: 'u_bruno', positive: false, comment: null, createdAt: '2026-10-28T14:00:00.000Z' }
   );
 });
 
@@ -166,10 +166,10 @@ test('checkCanThank: el orden de los errores es 404 > 403 > plazo > ya agradecid
   assert.equal(thank({ userId: 'u_carla', ret: ret({ recovered_by_id: null }) }).status, 403);
 });
 
-test('toThanks: arma la respuesta con returnId como texto y fecha ISO', () => {
+test('toThanks: arma la respuesta con returnId como número y fecha ISO', () => {
   const created = new Date('2026-10-28T14:00:00.000Z');
   assert.deepEqual(
-    r.toThanks({ id: 'b1f0c2d4-0000-4000-8000-000000000001', return_id: 60, recipient_id: 'u_carla', message: 'Gracias', created_at: created }),
-    { id: 'b1f0c2d4-0000-4000-8000-000000000001', returnId: '60', recipientId: 'u_carla', message: 'Gracias', createdAt: '2026-10-28T14:00:00.000Z' }
+    r.toThanks({ id: 'b1f0c2d4-0000-4000-8000-000000000001', return_id: '60', recipient_id: 'u_carla', message: 'Gracias', created_at: created }),
+    { id: 'b1f0c2d4-0000-4000-8000-000000000001', returnId: 60, recipientId: 'u_carla', message: 'Gracias', createdAt: '2026-10-28T14:00:00.000Z' }
   );
 });
