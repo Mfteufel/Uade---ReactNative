@@ -19,14 +19,14 @@ function PlaceForm({ form, submitTitle }) {
         onChangeText={form.setAddress}
         placeholder="Ej: Av. Cabildo 2000, frente a la estación"
         error={form.fieldError}
+        maxLength={200}
       />
       <Input
         label="Aclaración (opcional)"
         value={form.notes}
         onChangeText={form.setNotes}
         placeholder="Ej: nos vemos en la entrada principal"
-        multiline
-        style={styles.multiline}
+        maxLength={280}
       />
       <Button title={submitTitle} onPress={form.onPropose} loading={form.sending} />
     </View>
@@ -55,7 +55,7 @@ export default function MeetingPointScreen({ route }) {
 
   const onHowToGetThere = async () => {
     try {
-      await openDirections(point.address);
+      await openDirections(point);
     } catch (e) {
       Alert.alert('No se pudo abrir el mapa', e.message);
     }
@@ -140,6 +140,5 @@ const styles = StyleSheet.create({
   point: { marginBottom: spacing.md },
   actions: { marginTop: spacing.md },
   form: { marginTop: spacing.md },
-  multiline: { minHeight: 80, textAlignVertical: 'top' },
   note: { color: colors.muted, marginVertical: spacing.md },
 });

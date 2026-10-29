@@ -171,7 +171,8 @@ Existe un proyecto de Neon aparte de producción (`Hallados-dev`) para que el eq
 ### Lo que todavía no está hecho
 
 - Ya tienen API: **reclamos** (punto 7, ver `API_CONTRACT.md`, sección "Reclamos"), más `GET /barrios` y la foto de reclamo (`POST /reclamos/foto`).
-- La API (rutas y servicios) de publicaciones, puntos de encuentro, devoluciones, valoraciones por devolución, agradecimientos, alertas, seguidas y búsquedas: hoy solo existe el esquema.
+- La API (rutas y servicios) de puntos de encuentro, devoluciones, valoraciones por devolución, agradecimientos y alertas: hoy solo existe el esquema.
+  De seguidas solo están seguir y dejar de seguir (`POST /seguidas` y `DELETE /seguidas/:publicacionId`).
 - Los reclamos vencen a las 48 h con el reloj del servidor: `expireDueClaims` (`services/claims.js`) corre antes de cada lectura/decisión y cada 5 min desde `index.js`.
   Las rutas de publicaciones, cuando existan, deberían llamarla antes de leer estados si muestran reclamos.
 - Las migraciones 002 a 008 **no se aplicaron a producción**, que tiene solo la 001.

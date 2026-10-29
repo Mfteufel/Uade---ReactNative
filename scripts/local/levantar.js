@@ -11,10 +11,13 @@ const os = require('os');
 const net = require('net');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
-const { RAIZ, BACKEND, abortar, leerEnv, asegurarEnv, guardaBase, modoCorreo, entornoCorreo, VARS_CORREO } = require('./comun');
+const { RAIZ, BACKEND, abortar, leerEnv, asegurarEnv, jwtSecret, guardaBase, modoCorreo, entornoCorreo, VARS_CORREO } = require('./comun');
 
 // Variables de libpq que pg lee solas: definidas vacías para que un backend/.env no las meta.
 const PG_VACIAS = ['PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGSSLMODE', 'PGSSLROOTCERT', 'PGSSLCERT', 'PGSSLKEY', 'PGOPTIONS', 'PGSERVICE'];
+// Otras variables que lee el backend y que un backend/.env podría completar (NODE_ENV=production, etc.).
+// Vacías equivalen a no definidas (config.js y upload.js usan `||` con valor por defecto).
+const BACKEND_VACIAS = ['NODE_ENV', 'TRUST_PROXY', 'UPLOAD_TIMEOUT_MS'];
 const VIRTUALES = /docker|^br-|veth|vboxnet|vmnet|virbr|wsl|hyper-v|tailscale|^zt|vethernet|loopback/i;
 
 function opcion(nombre) {
@@ -131,9 +134,10 @@ async function main() {
   const apiUrl = `http://${host}:${apiPort}`;
   const entornoBackend = {
     ...process.env,
-    ...Object.fromEntries(PG_VACIAS.map((k) => [k, ''])),
+    ...Object.fromEntries([...PG_VACIAS, ...BACKEND_VACIAS].map((k) => [k, ''])),
     ...envArchivo,
     ...entornoCorreo(envArchivo, { neon }),
+    JWT_SECRET: jwtSecret(envArchivo),
     PORT: String(apiPort),
     PUBLIC_URL: apiUrl,
   };
@@ -158,6 +162,7 @@ async function main() {
     : 'QR      : no se muestra (Expo va por pipe con prefijo [expo]; sin TTY o con --logs-separados). Usá la URL exp:// de arriba.');
   console.log(`Base     : ${neon ? `Neon: ${baseHost}` : `local (${baseHost})`}`);
   console.log(`Correo   : ${correo}`);
+  console.log('JWT      : definido por el lanzador (nunca se toma de backend/.env)');
   if (correo === 'consola') {
     console.log('           Los códigos OTP salen en las líneas "[api] [MAIL DEV]" de esta terminal.');
     console.log('           Para que lleguen por mail, completá las variables de correo en backend/.env.demo.local.');
@@ -168,8 +173,8 @@ async function main() {
   console.log(`Expo env : EXPO_PUBLIC_USE_MOCK=false EXPO_PUBLIC_API_URL=${apiUrl} REACT_NATIVE_PACKAGER_HOSTNAME=${host}`);
   if (soloMostrar) {
     if (process.env.HALLADO_VOLCAR_ENTORNO === '1') {
-      // Solo para pruebas: estado de las variables de correo del hijo (sin valores).
-      for (const k of VARS_CORREO) console.log(`ENTORNO ${k}: ${k in entornoBackend ? (entornoBackend[k] === '' ? 'definida-vacia' : 'definida-con-valor') : 'NO definida'}`);
+      // Solo para pruebas: estado de JWT_SECRET, correo y vacías del hijo (sin valores).
+      for (const k of ['JWT_SECRET', ...VARS_CORREO, ...BACKEND_VACIAS]) console.log(`ENTORNO ${k}: ${k in entornoBackend ? (entornoBackend[k] === '' ? 'definida-vacia' : 'definida-con-valor') : 'NO definida'}`);
     }
     if (usb) console.log(`(USB) correría: adb reverse tcp:${apiPort} tcp:${apiPort} y tcp:${expoPort} tcp:${expoPort}`);
     console.log('--solo-mostrar: no se arrancó nada.');

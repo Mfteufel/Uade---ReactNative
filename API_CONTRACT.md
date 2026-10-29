@@ -49,6 +49,8 @@ Cuando se supera un límite: `429` con
 | Todo `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*` y `/barrios` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
 | `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*` y `/barrios` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /reclamos/foto` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
+| `GET /publicaciones/:id` y todo `/seguidas/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
+| `GET /publicaciones/:id` y `/seguidas/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 
 ### Códigos de error usados
 
@@ -786,11 +788,59 @@ Sin token. 200: `{ "status": "ok" }`.
 
 ---
 
+## Detalle de publicación (punto 4)
+
+### GET `/publicaciones/:id`
+Detalle de una publicación. Requiere token. Rate limit: los mismos de `/users/*`.
+
+200:
+```json
+{
+  "id": "p_ab12...",
+  "type": "found",
+  "title": "Llaves con llavero de osito",
+  "description": "Encontré un juego de 3 llaves con un llavero de peluche en la plaza.",
+  "status": "open",
+  "category": { "id": "keys", "name": "Llaves" },
+  "neighborhood": { "id": "palermo", "name": "Palermo" },
+  "occurredOn": "2026-10-24",
+  "timeFrom": "09:00",
+  "timeTo": "12:00",
+  "exactAddress": null,
+  "isOwner": false,
+  "isFollowing": false,
+  "photoUrls": ["http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90"],
+  "publisher": { /* igual que GET /users/:id/public */ }
+}
+```
+- `exactAddress`: solo para quien publicó o quien tiene un reclamo `accepted` sobre esta publicación. Para el resto llega `null`.
+- `isOwner`: si quien pide es quien publicó. `isFollowing`: si quien pide la sigue.
+- No incluye la pregunta ni la respuesta de verificación, ni el mail o el teléfono del publicador.
+- `status`: si ya llegó el vencimiento y seguía `open` o `in_claim`, llega `expired`.
+- `photoUrls` va ordenado por posición (puede estar vacío) y se piden con `GET /photos/:id`, sin token.
+  `description`, `timeFrom` y `timeTo` pueden ser `null`.
+
+Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` (también si el `:id` tiene formato inválido).
+Además, los generales de Convenciones (500 y 503).
+
+### POST `/seguidas`
+Seguir una publicación. Requiere token. Body: `{ "publicacionId": "p_ab12..." }`
+
+204 sin cuerpo. Seguir dos veces la misma publicación no es un error.
+
+Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` (no existe, o falta `publicacionId` o tiene formato inválido).
+
+### DELETE `/seguidas/:publicacionId`
+Dejar de seguir una publicación. Requiere token. 204 sin cuerpo, aunque no la siguiera.
+
+Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` si el id tiene formato inválido.
+
+---
+
 ## Pendiente para el backend (todavía no implementado)
 
 - **Reclamos (punto 7)**: implementados, ver la sección "Reclamos". El teléfono de la otra parte ya lo decide el servidor en `Claim.otherParty.phone`.
-  Pendiente de otros puntos: el detalle de publicación (punto 4) tiene que mostrar `exact_address` también a quien tenga un reclamo `accepted`
-  sobre esa publicación (consultando `claims`), y el punto de encuentro (punto 8) ya tiene sus rutas y la confirmación de la devolución, que llena `returns` (ver "Punto de encuentro").
+  Pendiente de otros puntos: el punto de encuentro (punto 8) ya tiene sus rutas y la confirmación de la devolución, que llena `returns` (ver "Punto de encuentro").
 - **Esquema de base ya creado, API pendiente**: las migraciones 004 a 008 (probadas solo en una rama de pruebas, no en producción)
   fijan estos estados exactos. Publicaciones: `open`, `in_claim`, `resolved`, `expired`. Reclamos: `pending`, `accepted`, `rejected`, `expired`
   (sin `cancelled`). Puntos de encuentro: `proposed`, `accepted`, `counter_proposed`. Tipos: publicación `lost`/`found`; reclamo `mine`/`found`.
