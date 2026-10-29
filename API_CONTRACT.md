@@ -653,7 +653,7 @@ Se valora a la otra parte: quien devolvió valora a quien recuperó y viceversa.
 Respuesta `201`:
 ```json
 {
-  "id": "7",
+  "id": 7,
   "returnId": 60,
   "ratedUserId": "u_seed_bruno",
   "positive": true,

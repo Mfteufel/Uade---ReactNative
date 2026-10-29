@@ -102,11 +102,11 @@ test('checkCanRate: el orden de los errores es 404 > sin contraparte > plazo > y
 
 // ----- respuesta -----
 
-test('toRating: arma la respuesta con returnId como número y fecha ISO', () => {
+test('toRating: arma la respuesta con id y returnId como número y fecha ISO', () => {
   const created = new Date('2026-10-28T14:00:00.000Z');
   assert.deepEqual(
-    r.toRating({ id: 7, return_id: '60', rated_user_id: 'u_bruno', positive: false, comment: null, created_at: created }),
-    { id: '7', returnId: 60, ratedUserId: 'u_bruno', positive: false, comment: null, createdAt: '2026-10-28T14:00:00.000Z' }
+    r.toRating({ id: '7', return_id: '60', rated_user_id: 'u_bruno', positive: false, comment: null, created_at: created }),
+    { id: 7, returnId: 60, ratedUserId: 'u_bruno', positive: false, comment: null, createdAt: '2026-10-28T14:00:00.000Z' }
   );
 });
 

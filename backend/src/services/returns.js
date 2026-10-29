@@ -95,7 +95,7 @@ const iso = (d) => (d instanceof Date ? d.toISOString() : d);
 
 function toRating(row) {
   return {
-    id: String(row.id),
+    id: Number(row.id), // ratings.id es bigint (pg lo devuelve como texto)
     returnId: Number(row.return_id), // número, igual que el id de /historial
     ratedUserId: row.rated_user_id,
     positive: row.positive,
