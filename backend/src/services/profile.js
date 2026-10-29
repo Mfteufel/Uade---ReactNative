@@ -69,4 +69,4 @@ async function updateMe(userId, body) {
   return toUser(r.rows[0]);
 }
 
-module.exports = { buildProfileUpdate, getMe, updateMe };
+module.exports = { FORBIDDEN_CHARS, buildProfileUpdate, getMe, updateMe };

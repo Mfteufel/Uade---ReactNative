@@ -14,7 +14,7 @@ const getImageSize = (uri) =>
   new Promise((resolve, reject) => Image.getSize(uri, (width, height) => resolve({ width, height }), reject));
 
 // Las fotos del celular pueden pesar varios MB: las achicamos y re-codificamos a JPEG antes de subir.
-async function shrinkForUpload(uri) {
+export async function shrinkForUpload(uri) {
   const { width, height } = await getImageSize(uri);
   const scale = Math.min(1, MAX_SIDE / Math.max(width, height));
   const context = ImageManipulator.manipulate(uri);

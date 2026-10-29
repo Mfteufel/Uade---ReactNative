@@ -77,8 +77,9 @@ no figure en `schema_migrations`. **No** aplica los de `migrations/rollback/`. C
 | `006_meeting_points.sql` | `meeting_points` |
 | `007_returns_ratings_thanks.sql` | columnas nuevas en `returns` y `ratings`, tabla `thanks` |
 | `008_alerts_follows_searches.sql` | `alerts`, `follows`, `recent_searches` |
+| `009_recent_searches_period.sql` | `recent_searches.period` (hoy / 3d / 7d / rango) |
 
-Con las ocho aplicadas hay 18 tablas de datos, más `schema_migrations` (que crea `migrate.js`), o sea 19 en total.
+Con las nueve aplicadas (la 009 solo agrega una columna) hay 18 tablas de datos, más `schema_migrations` (que crea `migrate.js`), o sea 19 en total.
 
 ### Estados y tipos (CHECK, no ENUM)
 
@@ -135,6 +136,27 @@ para poder volver a aplicarla. **Nunca contra producción** sin un backup y sin 
 4. `scripts/seed_demo.js` carga datos de ejemplo del esquema completo: solo inserta (`ON CONFLICT DO NOTHING`), usa ids con prefijo `_seed_`
    (`u_seed_`, `p_seed_`, ...) y **se niega a correr si el host no es el de la rama de pruebas**. Es idempotente.
 
+### Test de integración (reclamos y fotos)
+
+`test/claims.integration.test.js` prueba contra un Postgres real el cambio de avatar con fotos de reclamo, la aceptación que rechaza al resto,
+el límite de 3 intentos, la carrera de pedidos simultáneos, el vencimiento, el barrido de fotos sin usar y `GET /photos/:id`.
+`npm test` lo saltea solo: **no corre si no se definen las dos variables** y nunca usa el `DATABASE_URL` de `backend/.env` (producción).
+
+1. Usá una base **de pruebas** (una rama de Neon propia o un Postgres local), nunca producción ni Hallados-dev, y aplicale las migraciones 001 a 008.
+2. Guardá en `backend/.env.test.local` (ignorado por git):
+   ```
+   DATABASE_URL=<la misma cadena de la base de pruebas, solo para correr migrate>
+   TEST_DATABASE_URL=<cadena de la base de pruebas>
+   TEST_DB_ALLOWED_HOST_PREFIX=<inicio del host, ej. ep-nombre o localhost>
+   ```
+3. Migrar esa base: `node --env-file=.env.test.local scripts/migrate.js` (verificá antes el host, sin imprimir la URL entera).
+4. Correr: `node --env-file=.env.test.local --test test/claims.integration.test.js`.
+
+Los datos llevan el prefijo `u_itest_`/`p_itest_` y se borran al terminar. El caso del barrido ejecuta `deleteOrphanClaimPhotos()`, que borra
+**todas** las fotos de reclamo sin usar de más de 24 h de esa base: por eso solo debe correrse en una base de pruebas.
+
+Alternativa local: un Postgres instalado a mano con una base vacía dedicada a los tests (prefijo de host `localhost`).
+
 ### Base de desarrollo del equipo (Hallados-dev)
 
 Existe un proyecto de Neon aparte de producción (`Hallados-dev`) para que el equipo pruebe endpoints sin riesgo.
@@ -148,7 +170,10 @@ Existe un proyecto de Neon aparte de producción (`Hallados-dev`) para que el eq
 
 ### Lo que todavía no está hecho
 
-- La API (rutas y servicios) de publicaciones, reclamos, puntos de encuentro, devoluciones, valoraciones por devolución, agradecimientos, alertas, seguidas y búsquedas: hoy solo existe el esquema.
+- Ya tienen API: **reclamos** (punto 7, ver `API_CONTRACT.md`, sección "Reclamos"), más `GET /barrios` y la foto de reclamo (`POST /reclamos/foto`).
+- La API (rutas y servicios) de publicaciones, puntos de encuentro, devoluciones, valoraciones por devolución, agradecimientos, alertas, seguidas y búsquedas: hoy solo existe el esquema.
+- Los reclamos vencen a las 48 h con el reloj del servidor: `expireDueClaims` (`services/claims.js`) corre antes de cada lectura/decisión y cada 5 min desde `index.js`.
+  Las rutas de publicaciones, cuando existan, deberían llamarla antes de leer estados si muestran reclamos.
 - Las migraciones 002 a 008 **no se aplicaron a producción**, que tiene solo la 001.
 - La pregunta y respuesta de verificación viven en `publications` (`verification_question`, `verification_answer`), no en una tabla aparte.
 
@@ -253,11 +278,12 @@ backend/
     index.js           app Express, montaje de rutas y rate limits
     config.js          lectura y validación de variables de entorno
     db.js              pool de PostgreSQL, query y transacciones
-    routes/            auth.js, users.js, photos.js
+    routes/            auth.js, users.js, photos.js, claims.js, neighborhoods.js
     middleware/        auth (token), rateLimit, upload (fotos), errors
     services/          tokens, session, registration, passwordReset,
                        otp, otpStore, mailer, passwordRules,
-                       profile, photos, photoUrl, reputation, publicProfile
+                       profile, photos, photoUrl, reputation, publicProfile,
+                       claims
   migrations/          001_init.sql ... 008_alerts_follows_searches.sql (esquema)
     rollback/          00N_*.down.sql (reversión manual, 002 a 008)
   scripts/
