@@ -10,6 +10,8 @@ const neighborhoodsRouter = require('./routes/neighborhoods');
 const categoriesRouter = require('./routes/categories');
 const searchRouter = require('./routes/search');
 const recentSearchesRouter = require('./routes/recentSearches');
+const publishingRouter = require('./routes/publishing');
+const { deleteOrphanPublicationPhotos } = require('./services/publishing');
 const { expireDueClaims } = require('./services/claims');
 const { deleteOrphanClaimPhotos } = require('./services/photos');
 const { authLimiter, unauthLimiter, photosLimiter } = require('./middleware/rateLimit');
@@ -50,6 +52,7 @@ app.use('/barrios', unauthLimiter, neighborhoodsRouter);
 app.use('/categorias', unauthLimiter, categoriesRouter);
 app.use('/publicaciones', searchRouter); // solo GET /; sus middlewares van en la ruta (ver routes/search.js)
 app.use('/busquedas-recientes', unauthLimiter, recentSearchesRouter);
+app.use('/publicaciones', publishingRouter); // sus middlewares van en cada ruta (ver routes/publishing.js)
 
 app.use(notFound);
 app.use(errorHandler);
@@ -67,7 +70,10 @@ if (require.main === module) {
   setInterval(sweepClaims, 5 * 60 * 1000).unref();
 
   // Las fotos de reclamo que se subieron y nunca se usaron en un reclamo no deben quedar para siempre en la base.
-  const sweepPhotos = () => deleteOrphanClaimPhotos().catch((e) => console.error('[photos] no se pudo barrer fotos sin usar:', e.code || e.message));
+  const sweepPhotos = () =>
+    Promise.all([deleteOrphanClaimPhotos(), deleteOrphanPublicationPhotos()]).catch((e) =>
+      console.error('[photos] no se pudo barrer fotos sin usar:', e.code || e.message)
+    );
   sweepPhotos();
   setInterval(sweepPhotos, 60 * 60 * 1000).unref();
 }

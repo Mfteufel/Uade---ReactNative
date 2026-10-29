@@ -44,6 +44,7 @@ Cuando se supera un límite: `429` con
 | Todo `/users/*` | 300 pedidos / 15 min | Usuario |
 | `/users/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /users/me/photo` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
+| `POST /publicaciones/fotos` | 30 subidas / hora (cuenta también las fallidas) | Usuario |
 | `GET /photos/:id` | 1000 pedidos / 15 min | IP |
 | Todo `/reclamos/*`, `/publicaciones/:id/reclamos/*` y `/barrios` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
 | `/reclamos/*`, `/publicaciones/:id/reclamos/*` y `/barrios` sin token válido | 100 respuestas 401 / 15 min | IP |
@@ -560,6 +561,124 @@ y `La categoría no existe.` / `El barrio no existe.`
 Borra una búsqueda reciente **propia**.
 
 204 sin cuerpo. Errores: 404 `Búsqueda no encontrada.` (no existe, el id no es válido o es de otra persona; no se distingue).
+
+---
+
+## Publicaciones (punto 5)
+
+Todas requieren token. Rate limit general: el mismo de `/users/*` (300 pedidos / 15 min por usuario).
+
+Para publicar con fotos, primero se sube cada foto (`POST /publicaciones/fotos`) y después se crea la publicación con los `photoIds`. Es el mismo patrón que usan los reclamos. Si se pierde la conexión a mitad de camino, la app reintenta todo con el **mismo `clientId`** y el servidor no duplica la publicación.
+
+### Objeto `OwnPublication`
+Lo que ve **quien publicó**. Incluye la dirección exacta y la respuesta de verificación, que nunca se le mandan a otra persona.
+
+```json
+{
+  "id": "p_3f2c1a9e0b7d4c1e9a8f2d6b",
+  "clientId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "type": "found",
+  "title": "Llaves con llavero rojo",
+  "description": "Estaban en un banco de la plaza",
+  "category": { "id": "keys", "name": "Llaves" },
+  "occurredOn": "2026-10-25",
+  "timeFrom": "09:00",
+  "timeTo": "10:30",
+  "neighborhood": { "id": "palermo", "name": "Palermo" },
+  "exactAddress": "Plaza Armenia, banco junto a la calesita",
+  "latitude": null,
+  "longitude": null,
+  "verificationQuestion": "¿De qué color es el llavero?",
+  "verificationAnswer": "Rojo",
+  "status": "open",
+  "expiresAt": "2026-11-26T12:00:00.000Z",
+  "renewedAt": null,
+  "createdAt": "2026-10-27T12:00:00.000Z",
+  "photoUrls": ["http://localhost:3000/photos/7c9e6679-7425-40de-944b-e07fc1f90ae7"]
+}
+```
+
+- `type`: `lost` (perdí) o `found` (encontré).
+- `status`: `open`, `in_claim`, `resolved` o `expired`.
+- `occurredOn`: fecha sin hora (`YYYY-MM-DD`). `timeFrom` / `timeTo`: franja horaria opcional (`HH:MM`).
+- `verificationQuestion` / `verificationAnswer`: solo en `found`. En `lost` son `null`.
+- `photoUrls`: en el orden en que se cargaron (hasta 5).
+
+### POST `/publicaciones/fotos`
+Sube una foto para usarla en una publicación. Mismas reglas de formato y tamaño que `POST /users/me/photo`.
+
+201: `{ "photoId": "7c9e6679-7425-40de-944b-e07fc1f90ae7" }`
+
+- La foto no se ve en `GET /photos/:id` hasta que forme parte de una publicación.
+- Si pasan **24 horas** y no se usó en ninguna publicación, el servidor la borra (pasa cuando se corta la conexión a mitad de publicar).
+- Rate limit propio: **30 subidas / hora** por usuario (una publicación puede llevar 5).
+- Errores: los mismos que `POST /users/me/photo`.
+
+### POST `/publicaciones`
+Crea una publicación. Vence a los **30 días** (`expiresAt` lo fija el servidor).
+
+```json
+{
+  "clientId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "type": "found",
+  "title": "Llaves con llavero rojo",
+  "description": "Estaban en un banco de la plaza",
+  "categoryId": "keys",
+  "occurredOn": "2026-10-25",
+  "timeFrom": "09:00",
+  "timeTo": "10:30",
+  "neighborhoodId": "palermo",
+  "exactAddress": "Plaza Armenia, banco junto a la calesita",
+  "latitude": null,
+  "longitude": null,
+  "verificationQuestion": "¿De qué color es el llavero?",
+  "verificationAnswer": "Rojo",
+  "photoIds": ["7c9e6679-7425-40de-944b-e07fc1f90ae7"]
+}
+```
+
+- `clientId`: UUID que genera la app. Si ya existe una publicación de ese usuario con ese `clientId`, **no crea otra**: responde 200 con la existente.
+- Obligatorios: `clientId`, `type`, `title` (máx. 80), `categoryId`, `occurredOn` (no puede ser futura), `neighborhoodId`, y `exactAddress` (máx. 200) **o** `latitude` + `longitude`.
+- Opcionales: `description` (máx. 500), `timeFrom`, `timeTo`, `photoIds` (máx. 5).
+- `found`: `verificationQuestion` y `verificationAnswer` obligatorias (máx. 200 cada una). En `lost` se ignoran.
+- `latitude` y `longitude` van juntas o ninguna.
+- Las fotos tienen que ser del mismo usuario, subidas con `POST /publicaciones/fotos` y sin usar en otra publicación.
+
+201: `OwnPublication` (nueva) · 200: `OwnPublication` (ya existía ese `clientId`)
+
+Errores (422):
+- `Falta el identificador de la publicación.`
+- `Indicá si perdiste o encontraste algo.`
+- `Escribí un título.`
+- `Elegí una categoría.` / `Elegí una categoría válida.`
+- `La fecha del suceso no es válida.`
+- `La hora desde tiene que tener el formato HH:MM.`
+- `La hora desde no puede ser posterior a la hora hasta.`
+- `Elegí un barrio.` / `Elegí un barrio válido.`
+- `Escribí la dirección o usá tu ubicación actual.`
+- `La ubicación no es válida.`
+- `Escribí la pregunta de verificación.` / `Escribí la respuesta a la pregunta de verificación.`
+- `Podés subir hasta 5 fotos.` / `Hay fotos repetidas.` / `Las fotos no son válidas.`
+- `Alguna foto no es válida. Volvé a elegirlas.`
+
+### GET `/publicaciones/mias`
+"Mis publicaciones": las del usuario, de la más nueva a la más vieja (máximo 100).
+
+200: `OwnPublication[]`
+
+- Antes de responder, el servidor pasa a `expired` las que ya vencieron.
+
+### POST `/publicaciones/:id/renovar`
+Suma 30 días desde hoy. Si estaba `expired`, vuelve a `open`.
+
+200: `OwnPublication`
+
+Errores:
+- 404 `Publicación no encontrada.` (no existe o es de otra persona)
+- 409 `Una publicación resuelta no se puede renovar.`
+
+El formulario de publicar usa las categorías de `src/constants/categories.js` (mismos ids que `GET /categorias`) en vez de pedirlas, así se puede completar sin conexión:
+`documents`, `keys`, `electronics`, `pets`, `clothing`, `other`.
 
 ---
 

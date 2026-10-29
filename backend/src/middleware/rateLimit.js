@@ -29,7 +29,16 @@ const photoUploadLimiter = rateLimit({
   keyGenerator: (req) => req.user.id,
   message: { message: 'Subiste demasiadas fotos. Probá de nuevo en un rato.' },
 });
+// Límite propio para las fotos de publicaciones (30 por hora). Con el de perfil (10 por hora) y hasta
+// 5 fotos por publicación, solo alcanzaría para 2 publicaciones por hora.
+const publicationPhotoLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  keyGenerator: (req) => req.user.id,
+  message: { message: 'Subiste demasiadas fotos. Probá de nuevo en un rato.' },
+});
 // GET /photos/:id público, por IP.
 const photosLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 1000 });
 
-module.exports = { photoUploadLimiter, photosLimiter, usersLimiter, unauthLimiter, loginLimiter, authLimiter, otpLimiter, resetLimiter };
+module.exports = { photoUploadLimiter, publicationPhotoLimiter, photosLimiter, usersLimiter, unauthLimiter, loginLimiter, authLimiter, otpLimiter, resetLimiter };
