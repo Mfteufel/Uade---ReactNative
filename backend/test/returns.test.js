@@ -1,3 +1,4 @@
+process.env.JWT_SECRET = 'x'.repeat(48);
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const r = require('../src/services/returns');

@@ -239,7 +239,15 @@ async function confirmReturn(userId, claimId) {
          VALUES ($1, $2, $3, $4)`,
         [holderIdOf(claim), recoveredIdOf(claim), claimId, current.id]
       );
-      await c.query(`UPDATE publications SET status = 'resolved', status_changed_at = now() WHERE id = $1`, [claim.publication_id]);
+      // Solo se resuelve una publicación en reclamo (o vencida con un reclamo aceptado, datos viejos). Si no cambió ninguna fila
+      // (ya estaba 'resolved' u otro estado inesperado) se aborta: al lanzar el error se deshace también el INSERT en returns,
+      // así no queda una devolución registrada sobre una publicación que no refleja el cierre.
+      const resolved = await c.query(
+        `UPDATE publications SET status = 'resolved', status_changed_at = now()
+         WHERE id = $1 AND status IN ('in_claim', 'expired')`,
+        [claim.publication_id]
+      );
+      if (resolved.rowCount !== 1) throw new HttpError(409, 'La publicación ya no admite que se confirme la devolución.');
     });
   } catch (e) {
     // Red de seguridad: el UNIQUE (claim_id) de la base corta cualquier carrera que se haya escapado.

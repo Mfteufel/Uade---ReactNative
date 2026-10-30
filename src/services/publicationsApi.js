@@ -2,15 +2,28 @@ import { USE_MOCK } from '../config';
 import api, { unwrap } from './api';
 import { shrinkForUpload } from './userApi';
 import { getNeighborhoods } from './catalogApi';
+import { isNetworkError } from './errors';
+import { readCache, writeCache } from './offlineCache';
 import { delay } from './mock/db';
 import { MOCK_NEIGHBORHOODS } from './mock/catalog';
 import * as mock from './mock/mockPublications';
 
 // Barrios para el paso "¿Dónde?". Con el mock se usa una lista corta con los mismos ids del backend.
+// Se guarda la última lista que llegó: sin ella no se podría publicar sin conexión.
 export async function getNeighborhoodsForPublish() {
-  if (!USE_MOCK) return getNeighborhoods();
-  await delay();
-  return MOCK_NEIGHBORHOODS;
+  if (USE_MOCK) {
+    await delay();
+    return MOCK_NEIGHBORHOODS;
+  }
+  try {
+    const list = await getNeighborhoods();
+    writeCache('barrios', list);
+    return list;
+  } catch (e) {
+    const cached = isNetworkError(e) ? await readCache('barrios') : null;
+    if (cached) return cached.data;
+    throw e;
+  }
 }
 
 async function uploadPublicationPhoto(uri) {

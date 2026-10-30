@@ -51,6 +51,7 @@ export const colors = {
   border: '#D1D5DB',
   error: danger, // = danger
   warning: '#B26A00',
+  warningBackground: warnSoft, // alias de warnSoft: fondo de los avisos (OfflineNotice, PublishScreen)
   splash: '#F2F2F0', // fondo del ícono y de la pantalla de carga
   // Estados: siempre con texto (fg sobre bg), nunca solo color.
   status: {

@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
+import { useNetwork } from '../context/NetworkContext';
 import { getErrorMessage, getErrorStatus } from '../services/errors';
+import { showOfflineToast } from '../utils/offlineToast';
 
 // Envío de una valoración o un agradecimiento, con guarda contra el doble toque.
 // onDone(result): salió bien (201). onStale(): 409/422, el estado de la devolución cambió y hay que recargar.
@@ -8,8 +10,10 @@ export default function useReturnAction({ onDone, onStale }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const sendingRef = useRef(false);
+  const { isOnline } = useNetwork();
 
   const send = async (request) => {
+    if (!isOnline) return showOfflineToast();
     if (sendingRef.current) return;
     sendingRef.current = true;
     setSending(true);
@@ -27,5 +31,5 @@ export default function useReturnAction({ onDone, onStale }) {
     }
   };
 
-  return { sending, error, setError, send };
+  return { sending, error, setError, send, isOnline };
 }

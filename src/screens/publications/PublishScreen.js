@@ -5,6 +5,7 @@ import Field from '../../components/Field';
 import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import NeighborhoodPicker from '../../components/NeighborhoodPicker';
+import OfflineNotice from '../../components/OfflineNotice';
 import OptionChips from '../../components/OptionChips';
 import PhotoGrid from '../../components/PhotoGrid';
 import usePublishForm from '../../hooks/usePublishForm';
@@ -32,8 +33,12 @@ const STEP_TITLES = {
 export default function PublishScreen({ navigation, route }) {
   const form = usePublishForm({
     initialType: route.params?.type,
-    onPublished: () => {
-      Alert.alert('¡Listo!', 'Tu publicación ya está visible.');
+    onPublished: ({ pending }) => {
+      if (pending) {
+        Alert.alert('Pendiente de envío', 'Dispositivo sin conexión, tu publicación será creada cuando la conexión se restablezca.');
+      } else {
+        Alert.alert('¡Listo!', 'Tu publicación ya está visible.');
+      }
       navigation.replace('MyPublications');
     },
   });
@@ -46,10 +51,14 @@ export default function PublishScreen({ navigation, route }) {
   return (
     <FormScreen title={STEP_TITLES[stepName]} subtitle={`Paso ${draft.step + 1} de ${steps.length}`} error={form.formError}>
       {form.restored ? (
-        <View style={styles.restored}>
-          <Text style={styles.restoredText}>Seguís con el borrador que habías dejado sin publicar.</Text>
+        <View style={styles.draftNotice}>
+          <Text style={styles.draftNoticeText}>Seguís con el borrador que habías dejado sin publicar.</Text>
           <Button variant="link" title="Descartarlo y empezar de nuevo" onPress={form.discardDraft} />
         </View>
+      ) : null}
+
+      {!form.isOnline && isLast ? (
+        <OfflineNotice text="Dispositivo sin conexión, tu publicación será creada cuando la conexión se restablezca." />
       ) : null}
 
       {stepName === 'type' ? <TypeStep form={form} /> : null}
@@ -259,5 +268,8 @@ const styles = StyleSheet.create({
   location: { marginBottom: spacing.sm },
   restored: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
   restoredText: { color: colors.text },
+  // Mismo amarillo que los avisos sin conexión, para que se note al entrar.
+  draftNotice: { backgroundColor: colors.warningBackground, borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
+  draftNoticeText: { color: colors.warning },
   errorText: { color: colors.error },
 });

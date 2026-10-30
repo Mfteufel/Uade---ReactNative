@@ -7,11 +7,20 @@ export const tipoToSituacion = (tipo) => (tipo === 'found' ? 'perdi' : 'encontre
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// Además del formato, la fecha tiene que existir (no vale 2026-02-30): misma regla que isValidDate del servidor.
+const isRealDay = (s) => {
+  if (!DAY_RE.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+};
+
 // Valida un rango de días 'AAAA-MM-DD'. required: los dos son obligatorios (período "rango" del buscador);
 // si no, cada uno es opcional por separado (historial). Devuelve el texto del problema o ''.
 export function dayRangeError(desde, hasta, { required = true } = {}) {
   for (const day of [desde, hasta]) {
     if ((required || day) && !DAY_RE.test(day || '')) return 'Las fechas se escriben así: AAAA-MM-DD (ej. 2026-10-24).';
+    if (day && !isRealDay(day)) return `La fecha ${day} no existe. Revisá el día y el mes.`;
   }
   if (desde && hasta && desde > hasta) return 'La fecha "desde" no puede ser posterior a "hasta".';
   return '';

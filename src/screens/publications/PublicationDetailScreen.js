@@ -1,9 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Alert, Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import OfflineNotice from '../../components/OfflineNotice';
+import { useAuth } from '../../context/AuthContext';
+import { useNetwork } from '../../context/NetworkContext';
 import { getPublication } from '../../services/publicationDetailApi';
 import { followPublication, unfollowPublication } from '../../services/followsApi';
-import { getErrorMessage } from '../../services/errors';
+import { getViewed, saveViewed } from '../../services/viewedPublications';
+import { getErrorMessage, isNetworkError } from '../../services/errors';
+import { showOfflineToast } from '../../utils/offlineToast';
 import { PUBLICATION_STATUS } from '../../constants/publications';
 import { colors, spacing } from '../../constants/theme';
 
@@ -25,15 +30,47 @@ export default function PublicationDetailScreen({ route, navigation }) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // Se recarga cada vez que la pantalla vuelve a verse (por ejemplo, después de reclamar).
+  const { user } = useAuth();
+  const { isOnline } = useNetwork();
+  const [savedAt, setSavedAt] = useState(null); // con valor: se muestra la copia guardada en el celular
+  const [missingOffline, setMissingOffline] = useState(false); // sin conexión y sin copia guardada
+
+  // Se recarga cada vez que la pantalla vuelve a verse (por ejemplo, después de reclamar) y cuando vuelve la conexión.
+  // Sin conexión se usa la copia guardada, si ya se había abierto antes.
   useFocusEffect(
     useCallback(() => {
+      const showSaved = async () => {
+        const saved = await getViewed(user.id, publicationId);
+        if (saved) {
+          setPublication(saved.publication);
+          setSavedAt(saved.savedAt);
+        } else {
+          setMissingOffline(true);
+        }
+      };
+      if (!isOnline) {
+        showSaved();
+        return;
+      }
       getPublication(publicationId)
-        .then(setPublication)
-        .catch((e) => setError(getErrorMessage(e)));
-    }, [publicationId])
+        .then((p) => {
+          setPublication(p);
+          setSavedAt(null);
+          setMissingOffline(false);
+          setError('');
+          saveViewed(user.id, p);
+        })
+        .catch((e) => (isNetworkError(e) ? showSaved() : setError(getErrorMessage(e))));
+    }, [publicationId, user.id, isOnline])
   );
 
+  if (missingOffline && !publication) {
+    return (
+      <View style={[styles.screen, styles.block]}>
+        <OfflineNotice text="Dispositivo sin conexión, no se puede acceder al detalle." />
+      </View>
+    );
+  }
   if (error) return <Text style={styles.message}>{error}</Text>;
   if (!publication) return <Text style={styles.message}>Cargando...</Text>;
 
@@ -120,13 +157,18 @@ export default function PublicationDetailScreen({ route, navigation }) {
       <View>
         {publication.status === 'open' && (
           <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('ClaimForm', { publicationId: publication.id })}
+            style={[styles.button, !isOnline && styles.disabled]}
+            onPress={() =>
+              isOnline ? navigation.navigate('ClaimForm', { publicationId: publication.id }) : showOfflineToast()
+            }
           >
             <Text style={styles.buttonText}>{publication.type === 'found' ? 'Es mío' : 'Lo encontré'}</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.buttonOutline} onPress={toggleFollow}>
+        <TouchableOpacity
+          style={[styles.buttonOutline, !isOnline && styles.disabled]}
+          onPress={isOnline ? toggleFollow : () => showOfflineToast()}
+        >
           <Text style={styles.buttonOutlineText}>
             {saving ? 'Guardando...' : publication.isFollowing ? 'Dejar de seguir' : 'Seguir publicación'}
           </Text>
@@ -139,6 +181,11 @@ export default function PublicationDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.screen}>
+      {savedAt && (
+        <View style={styles.block}>
+          <OfflineNotice text="Dispositivo sin conexión, la información puede no estar actualizada." />
+        </View>
+      )}
       <FlatList
         data={BLOCKS}
         keyExtractor={(block) => block}
@@ -185,4 +232,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonOutlineText: { color: colors.primary, fontWeight: 'bold', fontSize: 16 },
+  disabled: { opacity: 0.5 },
 });

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { search, saveRecentSearch } from '../services/searchApi';
 import { toRecentBody, toSearchParams } from '../utils/searchCriteria';
-import { getErrorMessage } from '../services/errors';
+import { getErrorMessage, isNetworkError } from '../services/errors';
+import { lastResultsCache, readCache, writeCache } from '../services/offlineCache';
+import { useAuth } from '../context/AuthContext';
+import { useNetwork } from '../context/NetworkContext';
 
 const hasCenter = (f) => (f.lat !== undefined && f.lng !== undefined) || !!f.barrio;
 
@@ -15,6 +18,13 @@ export default function useSearchResults(initialFilters) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [savedAt, setSavedAt] = useState(null); // con valor: se están mostrando resultados guardados
+  const { user } = useAuth();
+  const cacheName = lastResultsCache(user.id);
+  // run se crea una sola vez: la conexión se lee de una ref para tener siempre el valor actual.
+  const { isOnline } = useNetwork();
+  const onlineRef = useRef(isOnline);
+  onlineRef.current = isOnline;
   const requestRef = useRef(0); // número de pedido: una respuesta vieja no pisa a una más nueva
   const busyRef = useRef(false); // evita pedir la misma página dos veces
   const recentSavedRef = useRef(false); // la búsqueda se guarda una sola vez por pantalla
@@ -28,6 +38,8 @@ export default function useSearchResults(initialFilters) {
     else setLoading(true);
     setError('');
     try {
+      // Sin conexión ni lo intenta: va directo a los resultados guardados.
+      if (!onlineRef.current) throw new Error('Dispositivo sin conexión, todavía no hay resultados guardados.');
       const res = await search(toSearchParams(f), pageNumber); // situación y período -> tipo y fechas
       if (id !== requestRef.current) return;
       setItems((prev) => {
@@ -37,13 +49,25 @@ export default function useSearchResults(initialFilters) {
       });
       setPage(res.page);
       setHasMore(res.hasMore);
+      setSavedAt(null);
+      if (mode !== 'more') writeCache(cacheName, res.items);
       // Recién con la primera página en 200 se guarda la búsqueda; sin esperar y sin que un fallo afecte los resultados.
       if (!recentSavedRef.current && mode === 'first') {
         recentSavedRef.current = true;
         saveRecentSearch(toRecentBody(initialFilters)).catch(() => {});
       }
     } catch (e) {
-      if (id === requestRef.current) setError(getErrorMessage(e));
+      // Sin conexión se muestran los últimos resultados que cargaron bien.
+      const offline = isNetworkError(e) || !onlineRef.current;
+      const cached = offline && mode !== 'more' ? await readCache(cacheName) : null;
+      if (id !== requestRef.current) return;
+      if (cached) {
+        setItems(cached.data);
+        setHasMore(false);
+        setSavedAt(cached.savedAt);
+      } else {
+        setError(getErrorMessage(e));
+      }
     } finally {
       if (id === requestRef.current) {
         busyRef.current = false;
@@ -83,7 +107,7 @@ export default function useSearchResults(initialFilters) {
   const retry = () => run(filters, 1, items.length === 0 ? 'first' : 'refresh');
 
   return {
-    filters, items, hasMore, loading, loadingMore, refreshing, error,
+    filters, items, hasMore, loading, loadingMore, refreshing, error, savedAt,
     canSortByDistance: hasCenter(filters),
     applyFilters, setOrder, loadMore, refresh, retry,
   };

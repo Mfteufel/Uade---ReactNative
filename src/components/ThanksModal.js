@@ -12,7 +12,7 @@ const MAX_MESSAGE = 500;
 // Se monta solo mientras está abierto: cada vez arranca vacío.
 function ThanksForm({ item, onDone, onStale, onClose }) {
   const [message, setMessage] = useState('');
-  const { sending, error, send } = useReturnAction({ onDone, onStale });
+  const { sending, error, send, isOnline } = useReturnAction({ onDone, onStale });
   const name = item.counterpart?.name || 'quien te lo devolvió';
 
   const submit = () => send(() => thankReturn(item.id, message));
@@ -37,7 +37,7 @@ function ThanksForm({ item, onDone, onStale, onClose }) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
       <View style={styles.footer}>
-        <Button title="Enviar" onPress={submit} loading={sending} disabled={message.trim() === ''} />
+        <Button title="Enviar" onPress={submit} loading={sending} dimmed={!isOnline} disabled={message.trim() === ''} />
         <Button variant="link" title="Cancelar" onPress={onClose} disabled={sending} />
       </View>
     </View>

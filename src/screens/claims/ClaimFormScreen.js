@@ -3,7 +3,9 @@ import Button from '../../components/Button';
 import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import NeighborhoodPicker from '../../components/NeighborhoodPicker';
+import { useNetwork } from '../../context/NetworkContext';
 import useClaimForm from '../../hooks/useClaimForm';
+import { showOfflineToast } from '../../utils/offlineToast';
 import { colors, spacing } from '../../constants/theme';
 
 // Foto del objeto o de lo que acredita el reclamo. required solo cambia el texto de la etiqueta.
@@ -28,6 +30,7 @@ function PhotoField({ required, photo, uploading, error, onChoose, onRemove }) {
 // Se llega desde el detalle de una publicación: navigation.navigate('ClaimForm', { publicationId }).
 // El servidor dice qué tipo de reclamo corresponde ("Es mío" o "Lo encontré"), no la pantalla.
 export default function ClaimFormScreen({ route, navigation }) {
+  const { isOnline } = useNetwork();
   const { publicationId } = route.params;
   const form = useClaimForm({
     publicationId,
@@ -104,7 +107,13 @@ export default function ClaimFormScreen({ route, navigation }) {
         onRemove={form.removePhoto}
       />
 
-      <Button title="Enviar reclamo" onPress={form.onSubmit} loading={form.sending} disabled={form.uploading} />
+      <Button
+        title="Enviar reclamo"
+        onPress={isOnline ? form.onSubmit : () => showOfflineToast()}
+        loading={form.sending}
+        disabled={form.uploading}
+        dimmed={!isOnline}
+      />
     </FormScreen>
   );
 }

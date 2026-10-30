@@ -535,12 +535,14 @@ El servidor, en una sola transacción (bloquea primero la publicación y despué
 2. Pasa la publicación a `resolved` y actualiza su `status_changed_at`.
 
 El reclamo sigue `accepted` (no hay estado nuevo). Hay una sola devolución por reclamo (`UNIQUE (claim_id)`).
+La publicación solo pasa a `resolved` si estaba `in_claim` o `expired` (datos viejos); si no, el pedido se aborta con 409 y no queda ninguna fila en `returns`.
+Riesgo aceptado: solo confirma quien recupera. Si esa persona nunca confirma, la publicación queda en `in_claim` (no vence) hasta que exista una forma de cancelar.
 Con la devolución registrada se puede valorar durante 7 días (punto 10) y suma a `completedReturns` de `user_id`.
 
 Errores:
 - 403 `La devolución la confirma quien recupera el objeto.`
 - 404 `Reclamo no encontrado.` (también si no es parte)
-- 409 `La coordinación del encuentro se habilita cuando el reclamo está aceptado.` / `Primero tienen que acordar el punto de encuentro.` / `La devolución ya fue confirmada.`
+- 409 `La coordinación del encuentro se habilita cuando el reclamo está aceptado.` / `Primero tienen que acordar el punto de encuentro.` / `La devolución ya fue confirmada.` / `La publicación ya no admite que se confirme la devolución.`
 
 ---
 
@@ -987,7 +989,7 @@ Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` 
   es una de las dos partes; se puede valorar hasta 7 días después de la devolución; el reclamo vence a las 48 h y la publicación a los 30 días
   (lo fija el endpoint); `verification_answer` y `exact_address` son privadas; `client_id` lo genera la app (idempotencia offline).
 - **Seguidas**: la novedad es `publications.status_changed_at > follows.seen_at`.
-- **Historial de devoluciones**: `GET /historial` ya existe (ver arriba). `POST /devoluciones/:id/valoraciones` y `POST /devoluciones/:id/agradecimiento` también. Falta mostrar los agradecimientos en el perfil público.
+- **Historial de devoluciones**: `GET /historial` ya existe (ver arriba). `POST /devoluciones/:id/valoraciones` y `POST /devoluciones/:id/agradecimiento` también. Los agradecimientos ya se muestran en el perfil público (`thanks`).
 
 ## Datos de ejemplo (seed)
 
