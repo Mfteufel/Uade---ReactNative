@@ -210,7 +210,7 @@ Todo lo siguiente existe hoy en la rama principal.
 - Solo coordina el lugar. Confirmar la devolución y las valoraciones todavía no están.
 
 **10. Historial y valoraciones**
-- Con `bruno.seed@hallado.com` o `carla.seed@hallado.com`: "Mi historial" (desde la pantalla principal), pestañas "Devolví" / "Recuperé", y filtros de fecha y categoría.
+- Con `bruno.seed@hallado.com` o `carla.seed@hallado.com`: "Mi historial" (desde la pantalla principal), pestañas "Devolví" / "Recuperé", y filtros de fecha, tipo (perdido / encontrado) y categoría.
 - Valorar y agradecer: solo dentro de los 7 días desde la devolución. La devolución de los datos de ejemplo puede estar vencida; los autores la refrescan con `db:refrescar-fechas`.
 - El agradecimiento se ve en el perfil público de quien devolvió, abajo de las insignias.
 - Las devoluciones nuevas salen del punto 8 ("Ya recibí el objeto"), que está en el PR #15.

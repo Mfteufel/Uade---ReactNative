@@ -7,13 +7,15 @@ import HistoryCard from '../../components/HistoryCard';
 import RatingModal from '../../components/RatingModal';
 import ThanksModal from '../../components/ThanksModal';
 import useHistory from '../../hooks/useHistory';
+import { PUBLICATION_TYPES } from '../../constants/publications';
 import { colors, spacing } from '../../constants/theme';
+import { HISTORY_TYPE_LABELS } from '../../utils/formatHistory';
 
-// "Mi historial": casos resueltos separados en "Devolví" y "Recuperé", con filtros de fechas y categoría.
+// "Mi historial": casos resueltos separados en "Devolví" y "Recuperé", con filtros de fechas, tipo y categoría.
 export default function HistoryScreen({ navigation }) {
   const {
     rol, setRol, applied, draft, setDraft, filterError, categories, hasFilters,
-    setCategoria, applyDates, clearFilters,
+    setTipo, setCategoria, applyDates, clearFilters,
     items, hasMore, loading, loadingMore, refreshing, error,
     loadMore, refresh, retry, updateItem,
   } = useHistory();
@@ -67,6 +69,11 @@ export default function HistoryScreen({ navigation }) {
       {filterError ? <Text style={styles.errorText}>{filterError}</Text> : null}
       <Button variant="link" title="Aplicar fechas" onPress={applyDates} />
 
+      <View style={styles.row}>
+        {PUBLICATION_TYPES.map((t) => (
+          <Chip key={t.id} label={HISTORY_TYPE_LABELS[t.id]} selected={applied.tipo === t.id} onPress={() => setTipo(t.id)} />
+        ))}
+      </View>
       {categories.length > 0 ? (
         <View style={styles.row}>
           {categories.map((c) => (

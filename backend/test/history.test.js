@@ -16,8 +16,14 @@ const ago = (ms) => new Date(NOW.getTime() - ms);
 
 test('parseHistoryFilters: sin parámetros usa los valores por defecto', () => {
   const { filters } = h.parseHistoryFilters({});
-  assert.deepEqual(filters, { rol: null, from: null, to: null, categoria: null, page: 1, limit: 20 });
+  assert.deepEqual(filters, { rol: null, from: null, to: null, tipo: null, categoria: null, page: 1, limit: 20 });
   assert.equal(h.parseHistoryFilters(undefined).filters.page, 1);
+});
+
+test('parseHistoryFilters: acepta tipo lost y found (tipo de la publicación)', () => {
+  assert.equal(h.parseHistoryFilters({ tipo: 'lost' }).filters.tipo, 'lost');
+  assert.equal(h.parseHistoryFilters({ tipo: 'found', categoria: 'keys' }).filters.tipo, 'found');
+  assert.equal(h.parseHistoryFilters({ tipo: '' }).filters.tipo, null);
 });
 
 test('parseHistoryFilters: acepta rol, categoría, página y límite', () => {
@@ -41,6 +47,9 @@ test('parseHistoryFilters: parámetros inválidos dan 422 en español', () => {
     [{ desde: '2026-13-01' }, /desde/],
     [{ hasta: '01/10/2026' }, /hasta/],
     [{ desde: '2026-10-10', hasta: '2026-10-09' }, /posterior/],
+    [{ tipo: 'perdido' }, /^El tipo no es válido\.$/],
+    [{ tipo: 'LOST' }, /^El tipo no es válido\.$/],
+    [{ tipo: ['lost'] }, /tipo/],
     [{ categoria: 'a b' }, /categoría/],
     [{ pagina: '0' }, /página/],
     [{ pagina: '1001' }, /página/],
@@ -91,6 +100,7 @@ const row = (over = {}) => ({
   created_at: ago(1 * DAY),
   role: 'recupere',
   publication_title: 'Celular Samsung',
+  publication_type: 'found',
   category_id: 'electronics',
   category_name: 'Electrónica',
   counterpart_id: 'u_carla',
@@ -108,7 +118,7 @@ test('toHistoryItem: arma el item completo, sin teléfono ni email de la contrap
     id: 7,
     role: 'recupere',
     date: ago(1 * DAY).toISOString(),
-    object: { title: 'Celular Samsung', category: { id: 'electronics', name: 'Electrónica' } },
+    object: { title: 'Celular Samsung', type: 'found', category:{ id: 'electronics', name: 'Electrónica' } },
     counterpart: { id: 'u_carla', name: 'Carla', photoUri: 'http://test.local:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90' },
     canRate: true,
     myRating: null,
@@ -156,6 +166,11 @@ test('toHistoryItem: si falta el objeto o la contraparte salen en null, sin inve
   assert.equal(item.canThank, false);
 });
 
+test('toHistoryItem: object.type trae el tipo de la publicación', () => {
+  assert.equal(h.toHistoryItem(row({ publication_type: 'lost' }), NOW).object.type, 'lost');
+  assert.equal(h.toHistoryItem(row(), NOW).object.type, 'found');
+});
+
 test('toHistoryItem: contraparte sin foto -> photoUri null', () => {
   assert.equal(h.toHistoryItem(row({ counterpart_photo_id: null }), NOW).counterpart.photoUri, null);
 });
@@ -188,6 +203,15 @@ test('buildHistoryQuery: cada rol usa su columna y los filtros agregan parámetr
   assert.equal(dev.params.length, 6);
   const rec = h.buildHistoryQuery({ ...f, rol: 'recupere' }, 'u_x');
   assert.match(rec.text, /WHERE r\.recovered_by_id = \$1\n/);
+  assert.doesNotMatch(rec.text, /p\.type = \$/);
+});
+
+test('buildHistoryQuery: tipo filtra por el tipo de la publicación y se suma a la categoría', () => {
+  const q = h.buildHistoryQuery({ rol: 'devolvi', from: null, to: null, tipo: 'lost', categoria: 'keys', page: 1, limit: 20 }, 'u_x');
+  assert.match(q.text, /p\.type = \$2/);
+  assert.match(q.text, /p\.category_id = \$3/);
+  assert.match(q.text, /p\.type AS publication_type/);
+  assert.deepEqual(q.params, ['u_x', 'lost', 'keys', 21, 0]);
 });
 
 // ----- ruta -----

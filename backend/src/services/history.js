@@ -6,6 +6,7 @@ const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const INT_RE = /^\d+$/;
 const ROLES = ['devolvi', 'recupere'];
+const TYPES = ['lost', 'found']; // tipo de la publicación, igual que `tipo` en GET /publicaciones
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 const MAX_PAGE = 1000;
@@ -44,7 +45,7 @@ function parseHistoryFilters(raw) {
   if (typeof raw !== 'object' || Array.isArray(raw)) return fail('Los parámetros no son válidos.');
 
   const text = {};
-  for (const key of ['rol', 'desde', 'hasta', 'categoria', 'pagina', 'limite']) {
+  for (const key of ['rol', 'desde', 'hasta', 'tipo', 'categoria', 'pagina', 'limite']) {
     const r = readText(raw, key);
     if (r.error) return r;
     text[key] = r.value;
@@ -62,6 +63,12 @@ function parseHistoryFilters(raw) {
   if (text.desde && text.hasta && text.desde > text.hasta) return fail('La fecha desde no puede ser posterior a hasta.');
   const from = text.desde ? startOfDayBA(text.desde) : null;
   const to = text.hasta ? new Date(startOfDayBA(text.hasta).getTime() + 24 * 60 * 60 * 1000) : null;
+
+  let tipo = null;
+  if (text.tipo !== undefined) {
+    if (!TYPES.includes(text.tipo)) return fail('El tipo no es válido.');
+    tipo = text.tipo;
+  }
 
   let categoria = null;
   if (text.categoria !== undefined) {
@@ -84,7 +91,7 @@ function parseHistoryFilters(raw) {
     limit = Number(text.limite);
   }
 
-  return { filters: { rol, from, to, categoria, page, limit } };
+  return { filters: { rol, from, to, tipo, categoria, page, limit } };
 }
 
 // ¿Sigue abierto el plazo de 7 días? El borde es inclusivo: a los 7 días exactos todavía se puede.
@@ -120,6 +127,7 @@ function toHistoryItem(row, now = new Date()) {
       ? null
       : {
           title: row.publication_title,
+          type: row.publication_type ?? null,
           category: row.category_id ? { id: row.category_id, name: row.category_name } : null,
         },
     counterpart: row.counterpart_id
@@ -148,12 +156,13 @@ function buildHistoryQuery(filters, userId) {
   ];
   if (filters.from) clauses.push(`r.created_at >= ${add(filters.from)}`);
   if (filters.to) clauses.push(`r.created_at < ${add(filters.to)}`);
+  if (filters.tipo) clauses.push(`p.type = ${add(filters.tipo)}`);
   if (filters.categoria) clauses.push(`p.category_id = ${add(filters.categoria)}`);
   const limitP = add(filters.limit + 1);
   const offsetP = add((filters.page - 1) * filters.limit);
   const text = `SELECT r.id, r.created_at,
        CASE WHEN r.user_id = $1 THEN 'devolvi' ELSE 'recupere' END AS role,
-       p.title AS publication_title, p.category_id, c.name AS category_name,
+       p.title AS publication_title, p.type AS publication_type, p.category_id, c.name AS category_name,
        u.id AS counterpart_id, u.name AS counterpart_name, u.photo_id AS counterpart_photo_id,
        rt.positive AS rating_positive, rt.comment AS rating_comment,
        th.id AS thanks_id

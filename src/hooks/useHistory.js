@@ -5,9 +5,9 @@ import { getCategoriesCached } from '../services/catalogApi';
 import { getErrorMessage } from '../services/errors';
 import { dayRangeError } from '../utils/searchCriteria';
 
-const NO_FILTERS = { desde: '', hasta: '', categoria: null };
+const NO_FILTERS = { desde: '', hasta: '', tipo: null, categoria: null };
 
-// "Mi historial": devoluciones paginadas, separadas por rol, con filtros de fechas y categoría.
+// "Mi historial": devoluciones paginadas, separadas por rol, con filtros de fechas, tipo y categoría.
 // Se vuelve a pedir al recuperar el foco, así canRate / canThank nunca quedan viejos.
 export default function useHistory() {
   const [rol, setRolState] = useState('devolvi'); // 'devolvi' | 'recupere'
@@ -85,6 +85,13 @@ export default function useHistory() {
     reload({ ...queryRef.current, rol: next });
   };
 
+  // tipo: 'lost' | 'found' (tipo de la publicación). Igual que la categoría: tocar el elegido lo quita.
+  const setTipo = (tipo) => {
+    const next = { ...applied, tipo: tipo === applied.tipo ? null : tipo };
+    setApplied(next);
+    reload({ ...queryRef.current, tipo: next.tipo });
+  };
+
   const setCategoria = (categoria) => {
     const next = { ...applied, categoria: categoria === applied.categoria ? null : categoria };
     setApplied(next);
@@ -119,11 +126,11 @@ export default function useHistory() {
   const refresh = () => run(queryRef.current, 1, 'refresh');
   const retry = () => run(queryRef.current, 1, items.length === 0 ? 'first' : 'refresh');
 
-  const hasFilters = Boolean(applied.desde || applied.hasta || applied.categoria || draft.desde || draft.hasta);
+  const hasFilters = Boolean(applied.desde || applied.hasta || applied.tipo || applied.categoria || draft.desde || draft.hasta);
 
   return {
     rol, setRol, applied, draft, setDraft, filterError, categories, hasFilters,
-    setCategoria, applyDates, clearFilters,
+    setTipo, setCategoria, applyDates, clearFilters,
     items, hasMore, loading, loadingMore, refreshing, error,
     loadMore, refresh, retry, updateItem,
   };
