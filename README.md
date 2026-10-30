@@ -209,13 +209,18 @@ Todo lo siguiente existe hoy en la rama principal.
 - Quien tiene el objeto propone primero: el publicador si la publicación es de algo encontrado, o quien reclamó "Lo encontré" si es de algo perdido. La otra parte acepta el lugar o sugiere otro.
 - Solo coordina el lugar. Confirmar la devolución y las valoraciones todavía no están.
 
+**10. Historial y valoraciones**
+- Con `bruno.seed@hallado.com` o `carla.seed@hallado.com`: "Mi historial" (desde la pantalla principal), pestañas "Devolví" / "Recuperé", y filtros de fecha y categoría.
+- Valorar y agradecer: solo dentro de los 7 días desde la devolución. La devolución de los datos de ejemplo puede estar vencida; los autores la refrescan con `db:refrescar-fechas`.
+- El agradecimiento se ve en el perfil público de quien devolvió, abajo de las insignias.
+- Las devoluciones nuevas salen del punto 8 ("Ya recibí el objeto"), que está en el PR #15.
+
 ## Estado de la entrega
 
 Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
 
 - Modo sin conexión.
 - Alertas y publicaciones seguidas: el botón seguir / dejar de seguir ya funciona desde el detalle de la publicación (`POST` y `DELETE /seguidas`), pero las secciones "Mis alertas" y "Seguidas" (listados y novedades) todavía no existen.
-- Historial y valoraciones.
 
 ## Qué no hace el modo Neon
 
