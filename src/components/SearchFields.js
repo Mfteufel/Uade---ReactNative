@@ -1,22 +1,41 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Banner from './Banner';
 import Button from './Button';
 import Chip from './Chip';
+import Icon from './Icon';
 import Input from './Input';
 import NeighborhoodPicker from './NeighborhoodPicker';
+import SectionTitle from './SectionTitle';
 import { PERIODS, RADIUS_OPTIONS, SITUATIONS } from '../constants/search';
-import { colors, spacing } from '../constants/theme';
+import { colors, radius, spacing, typography } from '../constants/theme';
 
 function Section({ title, children }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>{title}</Text>
+      <SectionTitle title={title} style={styles.title} />
       {children}
     </View>
   );
 }
 
+// Opción grande de 48 dp (¿Qué te pasó?): dos por fila, con tilde y la palabra cuando está elegida.
+function BigChoice({ label, selected, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      style={[styles.choice, selected && styles.choiceSelected]}
+    >
+      {selected ? <Icon name="check" size={16} color={colors.blue600} style={styles.choiceIcon} /> : null}
+      <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 // Los pasos del buscador. `filters` es lo que devuelve useSearchFilters.
-// Lo usan el buscador guiado y el modal "Filtros" de los resultados.
+// Lo usan el buscador guiado y el modal "Filtros" de los resultados (mismas props en los dos).
 export default function SearchFields({ filters, showSituation = true }) {
   const { values, set } = filters;
   const hasLocation = values.lat !== null && values.lng !== null;
@@ -25,16 +44,16 @@ export default function SearchFields({ filters, showSituation = true }) {
     <View>
       {filters.catalogError ? (
         <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{filters.catalogError}</Text>
+          <Banner kind="warn" message={filters.catalogError} />
           <Button variant="link" title="Reintentar" onPress={filters.reloadCatalogs} />
         </View>
       ) : null}
 
       {showSituation ? (
         <Section title="¿Qué te pasó?">
-          <View style={styles.row}>
+          <View style={styles.choices}>
             {SITUATIONS.map((s) => (
-              <Chip key={s.key} label={s.label} selected={values.situacion === s.key} onPress={() => set({ situacion: s.key })} />
+              <BigChoice key={s.key} label={s.label} selected={values.situacion === s.key} onPress={() => set({ situacion: s.key })} />
             ))}
           </View>
         </Section>
@@ -68,12 +87,19 @@ export default function SearchFields({ filters, showSituation = true }) {
         {values.barrio ? <Button variant="link" title="Quitar barrio" onPress={filters.clearNeighborhood} /> : null}
 
         <Text style={styles.or}>o</Text>
-        <Button
-          variant="link"
-          title={hasLocation ? 'Ubicación actual cargada · actualizar' : 'Usar mi ubicación'}
+        <Pressable
           onPress={filters.useMyLocation}
-          loading={filters.locating}
-        />
+          disabled={filters.locating}
+          accessibilityRole="button"
+          accessibilityLabel={hasLocation ? 'Ubicación actual cargada · actualizar' : 'Usar mi ubicación actual'}
+          accessibilityState={{ disabled: filters.locating, busy: filters.locating }}
+          style={({ pressed }) => [styles.locationField, pressed && styles.locationPressed]}
+        >
+          <Icon name="location" size={24} color={colors.blue600} />
+          <Text style={styles.locationText}>
+            {filters.locating ? 'Buscando tu ubicación…' : hasLocation ? 'Ubicación actual cargada · actualizar' : 'Usar mi ubicación actual'}
+          </Text>
+        </Pressable>
         {filters.locationError ? <Text style={styles.errorText}>{filters.locationError}</Text> : null}
         {hasLocation ? (
           <View>
@@ -106,11 +132,41 @@ export default function SearchFields({ filters, showSituation = true }) {
 }
 
 const styles = StyleSheet.create({
-  section: { marginBottom: spacing.lg },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+  section: { marginBottom: spacing.md },
+  title: { marginTop: 0 },
   row: { flexDirection: 'row', flexWrap: 'wrap' },
-  label: { color: colors.text, fontWeight: '500', marginVertical: spacing.sm },
-  or: { color: colors.muted, textAlign: 'center', marginVertical: spacing.xs },
-  errorBox: { backgroundColor: '#FDECEA', borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
-  errorText: { color: colors.error },
+  choices: { flexDirection: 'row', gap: spacing.sm },
+  choice: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  choiceSelected: { backgroundColor: colors.blue50, borderColor: colors.blue600, borderWidth: 1.5 },
+  choiceIcon: { marginRight: spacing.xs },
+  choiceText: { ...typography.body, color: colors.text },
+  choiceTextSelected: { color: colors.blue600, fontWeight: '500' },
+  label: { ...typography.caption, color: colors.textDim, marginVertical: spacing.sm },
+  or: { ...typography.body, color: colors.textDim, textAlign: 'center', marginVertical: spacing.xs },
+  locationField: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.field,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  locationPressed: { backgroundColor: colors.blue50 },
+  locationText: { ...typography.body, flex: 1, color: colors.blue600 },
+  errorBox: { marginBottom: spacing.md },
+  errorText: { ...typography.body, color: colors.danger, marginTop: spacing.sm },
 });

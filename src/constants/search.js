@@ -18,8 +18,8 @@ export const RADIUS_OPTIONS = [
 export const PERIODS = [
   { key: null, label: 'Cualquiera' },
   { key: 'hoy', label: 'Hoy' },
-  { key: '3d', label: '3 días' },
-  { key: '7d', label: 'Una semana' },
+  { key: '3d', label: 'Últimos 3 días' },
+  { key: '7d', label: 'Última semana' },
   { key: 'rango', label: 'Elegir fechas' },
 ];
 
