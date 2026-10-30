@@ -16,11 +16,24 @@ export const ICONS = {
   camera: '▣', // ▣
   image: '▤', // ▤
   back: '‹', // ‹
+  clock: '◷', // ◷
+  check: '✓︎', // ✓
+  close: '✕︎', // ✕
+  info: 'ℹ︎', // ℹ
+  warning: '⚠︎', // ⚠
+  calendar: '▦', // ▦
+  tag: '#',
+  location: '⌖', // ⌖
+  lock: '⚿', // ⚿
+  history: '↺', // ↺
+  star: '★︎', // ★ (Valorar)
+  heart: '♥︎', // ♥ (Agradecer)
+  filter: '▽', // ▽
 };
 
 // Decorativo: lo describe el texto o el accessibilityLabel del contenedor.
 // Si se pasa accessibilityLabel, el ícono deja de ser decorativo y se anuncia.
-export default function Icon({ name, size = 22, color = colors.text, style, accessibilityLabel }) {
+export default function Icon({ name, size = 24, color = colors.text, style, accessibilityLabel }) {
   const glyph = ICONS[name];
   if (!glyph) return null;
   const decorative = !accessibilityLabel;

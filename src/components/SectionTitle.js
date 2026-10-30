@@ -11,7 +11,7 @@ export default function SectionTitle({ title, style }) {
 
 const styles = StyleSheet.create({
   title: {
-    ...typography.subtitle,
+    ...typography.section,
     color: colors.text,
     marginTop: spacing.md,
     marginBottom: spacing.sm,

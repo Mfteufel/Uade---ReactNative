@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { colors, spacing, typography } from '../constants/theme';
 
-// Dato de solo lectura: etiqueta chica arriba y valor abajo.
+// Dato de solo lectura: etiqueta arriba (14 sp peso 500, textDim) y valor abajo (body).
 export default function Field({ label, value }) {
   return (
     <View style={styles.field}>
@@ -13,6 +13,6 @@ export default function Field({ label, value }) {
 
 const styles = StyleSheet.create({
   field: { paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.surface },
-  label: { fontSize: 12, color: colors.muted, textTransform: 'uppercase' },
-  value: { fontSize: 16, color: colors.text, marginTop: 2 },
+  label: { ...typography.caption, color: colors.textDim },
+  value: { ...typography.body, color: colors.text, marginTop: 2 },
 });
