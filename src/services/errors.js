@@ -13,6 +13,9 @@ export function getErrorStatus(error) {
   return error?.response?.status ?? error?.status ?? 0;
 }
 
+// El pedido no llegó a tener respuesta: sin red, servidor caído o timeout.
+export const isNetworkError = (error) => !!error?.isAxiosError && !error.response;
+
 // Para usar en las pantallas: siempre devuelve un texto mostrable.
 export function getErrorMessage(error) {
   const fromServer = error?.response?.data?.message;

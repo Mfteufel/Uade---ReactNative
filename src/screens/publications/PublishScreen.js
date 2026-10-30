@@ -5,6 +5,7 @@ import Field from '../../components/Field';
 import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import NeighborhoodPicker from '../../components/NeighborhoodPicker';
+import OfflineNotice from '../../components/OfflineNotice';
 import OptionChips from '../../components/OptionChips';
 import PhotoGrid from '../../components/PhotoGrid';
 import usePublishForm from '../../hooks/usePublishForm';
@@ -32,8 +33,12 @@ const STEP_TITLES = {
 export default function PublishScreen({ navigation, route }) {
   const form = usePublishForm({
     initialType: route.params?.type,
-    onPublished: () => {
-      Alert.alert('¡Listo!', 'Tu publicación ya está visible.');
+    onPublished: ({ pending }) => {
+      if (pending) {
+        Alert.alert('Pendiente de envío', 'Dispositivo sin conexión, tu publicación será creada cuando la conexión se restablezca.');
+      } else {
+        Alert.alert('¡Listo!', 'Tu publicación ya está visible.');
+      }
       navigation.replace('MyPublications');
     },
   });
@@ -50,6 +55,10 @@ export default function PublishScreen({ navigation, route }) {
           <Text style={styles.restoredText}>Seguís con el borrador que habías dejado sin publicar.</Text>
           <Button variant="link" title="Descartarlo y empezar de nuevo" onPress={form.discardDraft} />
         </View>
+      ) : null}
+
+      {!form.isOnline && isLast ? (
+        <OfflineNotice text="Dispositivo sin conexión, tu publicación será creada cuando la conexión se restablezca." />
       ) : null}
 
       {stepName === 'type' ? <TypeStep form={form} /> : null}

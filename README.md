@@ -36,6 +36,7 @@ Este README explica cómo **levantar todo y probarlo en un celular Android físi
 - React Navigation (native-stack).
 - Axios para el cliente HTTP, AsyncStorage (datos del mock) y expo-secure-store (refresh token).
 - expo-local-authentication (huella o rostro), expo-image-picker, expo-image-manipulator y expo-location.
+- expo-network (detecta si el celular tiene conexión) y expo-file-system (fotos guardadas para el modo sin conexión).
 - Backend: Node.js, Express 5, PostgreSQL (`pg`), JWT, bcryptjs, nodemailer y sharp.
 
 ## Estructura del proyecto
@@ -197,6 +198,13 @@ Todo lo siguiente existe hoy en la rama principal.
 - Con una cuenta que no sea la del publicador: "Es mío" (en hallazgos) o "Lo encontré" (en pérdidas) abre el formulario de reclamo, y "Seguir publicación" / "Dejar de seguir".
 - Con la cuenta del publicador: el botón lleva a "Mis publicaciones". La dirección exacta solo la ven el publicador y quien tiene un reclamo aceptado.
 
+**6. Modo sin conexión**
+- Abrí algunas publicaciones, poné el celular en modo avión y volvé a abrirlas: se ven las fotos, la descripción y el barrio, con un aviso de que es una copia guardada. La dirección exacta no se guarda.
+- El buscador sin conexión muestra los últimos resultados que cargaron bien, y "Mis publicaciones" su última copia, las dos con aviso de que pueden estar desactualizadas.
+- Publicar en modo avión: queda "Pendiente de envío" en "Mis publicaciones" y se publica sola al volver la conexión (si hay wifi pero no internet, se reintenta cada minuto y al volver a la app).
+- Sin conexión, las acciones que la necesitan (reclamar, seguir, aceptar o rechazar un reclamo, el punto de encuentro, "Ya recibí el objeto", renovar, valorar y agradecer) se ven en gris y avisan que falta conexión.
+- Al cerrar sesión se borra todo lo guardado para el modo sin conexión. Si hay publicaciones pendientes, se avisa antes porque se pierden.
+
 **7. Reclamos**
 - "Mis reclamos" (desde la pantalla principal o desde "Mi perfil"): lista y detalle de reclamos.
 - Con `diego.seed@hallado.com`: reclamo pendiente sobre la publicación de Carla (con tiempo restante para que el publicador responda) y un reclamo anterior rechazado.
@@ -220,7 +228,6 @@ Todo lo siguiente existe hoy en la rama principal.
 
 Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
 
-- Modo sin conexión.
 - Alertas y publicaciones seguidas: el botón seguir / dejar de seguir ya funciona desde el detalle de la publicación (`POST` y `DELETE /seguidas`), pero las secciones "Mis alertas" y "Seguidas" (listados y novedades) todavía no existen.
 
 ## Qué no hace el modo Neon
@@ -316,6 +323,7 @@ Pasos:
 
 Notas:
 - La carpeta `android/` se genera sola y está en el `.gitignore`.
+- Si ya tenías un build instalado de antes del modo sin conexión, hay que volver a compilarlo: `expo-network` tiene código nativo. Con Expo Go no hace falta.
 - La app instalada tiene su propio almacenamiento: los usuarios creados en Expo Go no aparecen ahí.
 - La app instalada carga el código desde el servidor de Expo de la PC (puerto 8081 por defecto). Si ese puerto está ocupado, iniciá Expo en otro puerto y redirigilo con `adb reverse`:
   ```bash

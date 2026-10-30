@@ -1,18 +1,26 @@
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import Button from '../../components/Button';
 import MyPublicationCard from '../../components/MyPublicationCard';
+import OfflineNotice from '../../components/OfflineNotice';
 import useMyPublications from '../../hooks/useMyPublications';
 import { colors, spacing } from '../../constants/theme';
 
 export default function MyPublicationsScreen({ navigation }) {
-  const { publications, loading, error, load, renew, renewingId } = useMyPublications();
+  const { publications, loading, error, offlineCopy, isOnline, refresh, renew, renewingId, discard } = useMyPublications();
+
+  let offlineText = '';
+  if (offlineCopy?.savedAt) {
+    offlineText = 'Dispositivo sin conexión, mostrando la última copia de tus publicaciones. La información puede no estar actualizada.';
+  } else if (offlineCopy) {
+    offlineText = 'Dispositivo sin conexión, todavía no hay publicaciones guardadas.';
+  }
 
   return (
     <View style={styles.container}>
       {error ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{error}</Text>
-          <Button variant="link" title="Reintentar" onPress={load} loading={loading} />
+          <Button variant="link" title="Reintentar" onPress={refresh} loading={loading} />
         </View>
       ) : null}
 
@@ -23,16 +31,23 @@ export default function MyPublicationsScreen({ navigation }) {
           data={publications}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <MyPublicationCard publication={item} onRenew={renew} renewing={renewingId === item.id} />
+            <MyPublicationCard
+              publication={item}
+              onRenew={renew}
+              renewing={renewingId === item.id}
+              onDiscard={discard}
+              offline={!isOnline}
+            />
           )}
           contentContainerStyle={styles.list}
           refreshing={loading}
-          onRefresh={load}
+          onRefresh={refresh}
           ListEmptyComponent={
-            error ? null : <Text style={styles.empty}>Todavía no publicaste nada.</Text>
+            error || (offlineCopy && !offlineCopy.savedAt) ? null : <Text style={styles.empty}>Todavía no publicaste nada.</Text>
           }
           ListHeaderComponent={
             <View style={styles.header}>
+              {offlineText ? <OfflineNotice text={offlineText} /> : null}
               <Button title="Nueva publicación" onPress={() => navigation.navigate('Publish')} />
             </View>
           }

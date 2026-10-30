@@ -3,14 +3,16 @@ import Button from '../../components/Button';
 import Field from '../../components/Field';
 import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
+import { useNetwork } from '../../context/NetworkContext';
 import useMeetingPoint from '../../hooks/useMeetingPoint';
 import { MEETING_STATUS_LABEL } from '../../constants/claims';
 import { colors, spacing } from '../../constants/theme';
 import { formatDateTime } from '../../utils/formatDateTime';
 import { openDirections } from '../../utils/openDirections';
+import { showOfflineToast } from '../../utils/offlineToast';
 
 // Formulario para proponer un lugar (el primero, o uno distinto al vigente).
-function PlaceForm({ form, submitTitle }) {
+function PlaceForm({ form, submitTitle, offline }) {
   return (
     <View style={styles.form}>
       <Input
@@ -28,7 +30,12 @@ function PlaceForm({ form, submitTitle }) {
         placeholder="Ej: nos vemos en la entrada principal"
         maxLength={280}
       />
-      <Button title={submitTitle} onPress={form.onPropose} loading={form.sending} />
+      <Button
+        title={submitTitle}
+        onPress={offline ? () => showOfflineToast() : form.onPropose}
+        loading={form.sending}
+        dimmed={offline}
+      />
     </View>
   );
 }
@@ -37,6 +44,7 @@ function PlaceForm({ form, submitTitle }) {
 // El servidor indica qué puede hacer cada persona (canPropose / canAccept); la pantalla solo lo muestra.
 export default function MeetingPointScreen({ route }) {
   const { claimId } = route.params;
+  const { isOnline } = useNetwork();
   const form = useMeetingPoint(claimId);
   const { meeting, loading, error, load, sending, actionError } = form;
 
@@ -95,10 +103,15 @@ export default function MeetingPointScreen({ route }) {
 
       {meeting.canAccept ? (
         <View style={styles.actions}>
-          <Button title="Aceptar este lugar" loading={sending} onPress={confirmAccept} />
+          <Button
+            title="Aceptar este lugar"
+            loading={sending}
+            dimmed={!isOnline}
+            onPress={isOnline ? confirmAccept : () => showOfflineToast()}
+          />
           {form.showForm ? (
             <>
-              <PlaceForm form={form} submitTitle="Sugerir este lugar" />
+              <PlaceForm form={form} submitTitle="Sugerir este lugar" offline={!isOnline} />
               <Button variant="link" title="Cancelar" disabled={sending} onPress={form.closeForm} />
             </>
           ) : (
@@ -113,7 +126,12 @@ export default function MeetingPointScreen({ route }) {
       ) : null}
       {meeting.canConfirmReturn ? (
         <View style={styles.actions}>
-          <Button title="Ya recibí el objeto" loading={sending} onPress={confirmReturn} />
+          <Button
+            title="Ya recibí el objeto"
+            loading={sending}
+            dimmed={!isOnline}
+            onPress={isOnline ? confirmReturn : () => showOfflineToast()}
+          />
         </View>
       ) : null}
       {point?.status === 'accepted' && meeting.iHaveTheObject && !meeting.completedReturn ? (
@@ -126,7 +144,7 @@ export default function MeetingPointScreen({ route }) {
           <Text style={styles.note}>
             Vos tenés el objeto: proponé un lugar para entregarlo. {meeting.otherParty.name} podrá aceptarlo o sugerir otro.
           </Text>
-          <PlaceForm form={form} submitTitle="Proponer lugar" />
+          <PlaceForm form={form} submitTitle="Proponer lugar" offline={!isOnline} />
         </>
       ) : null}
     </FormScreen>

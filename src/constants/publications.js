@@ -12,6 +12,7 @@ export const PUBLICATION_STATUS = {
   in_claim: { label: 'En reclamo', color: colors.warning },
   resolved: { label: 'Resuelta', color: colors.muted },
   expired: { label: 'Vencida', color: colors.error },
+  pending: { label: 'Pendiente de envío', color: colors.warning }, // solo existe en el celular
 };
 
 // Franjas horarias del suceso. La API guarda desde/hasta; la app solo ofrece estas opciones.

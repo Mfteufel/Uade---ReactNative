@@ -3,7 +3,9 @@ import Avatar from '../../components/Avatar';
 import Button from '../../components/Button';
 import ClaimStatusBadge from '../../components/ClaimStatusBadge';
 import Field from '../../components/Field';
+import { useNetwork } from '../../context/NetworkContext';
 import useClaimDetail from '../../hooks/useClaimDetail';
+import { showOfflineToast } from '../../utils/offlineToast';
 import { claimPhotoSource } from '../../services/claimsApi';
 import { CLAIM_ROLE_LABEL, CLAIM_TYPE_LABEL } from '../../constants/claims';
 import { colors, spacing } from '../../constants/theme';
@@ -19,6 +21,9 @@ const confirmDecision = (title, message, confirmText, onConfirm) =>
 export default function ClaimDetailScreen({ route, navigation }) {
   const { claimId } = route.params;
   const { claim, loading, error, load, deciding, actionError, onAccept, onReject } = useClaimDetail(claimId);
+  const { isOnline } = useNetwork();
+  // Sin conexión, los botones se ven grises y al tocarlos solo avisan.
+  const whenOnline = (action) => () => (isOnline ? action() : showOfflineToast());
 
   if (loading && !claim) return <ActivityIndicator style={styles.center} size="large" />;
 
@@ -94,7 +99,11 @@ export default function ClaimDetailScreen({ route, navigation }) {
       {/* La coordinación del encuentro solo existe con el reclamo aceptado; el servidor lo vuelve a validar. */}
       {claim.status === 'accepted' ? (
         <View style={styles.actions}>
-          <Button title="Coordinar punto de encuentro" onPress={() => navigation.navigate('MeetingPoint', { claimId: claim.id })} />
+          <Button
+            title="Coordinar punto de encuentro"
+            dimmed={!isOnline}
+            onPress={whenOnline(() => navigation.navigate('MeetingPoint', { claimId: claim.id }))}
+          />
         </View>
       ) : null}
 
@@ -103,15 +112,19 @@ export default function ClaimDetailScreen({ route, navigation }) {
           <Button
             title="Aceptar reclamo"
             loading={deciding}
-            onPress={() =>
-              confirmDecision('Aceptar reclamo', '¿Confirmás que este reclamo corresponde a tu publicación?', 'Aceptar', onAccept)
-            }
+            dimmed={!isOnline}
+            onPress={whenOnline(() =>
+              confirmDecision('Aceptar reclamo', '¿Confirmás que este reclamo corresponde a tu publicación?', 'Aceptar', onAccept),
+            )}
           />
           <Button
             variant="link"
             title="Rechazar reclamo"
             disabled={deciding}
-            onPress={() => confirmDecision('Rechazar reclamo', '¿Seguro que querés rechazar este reclamo?', 'Rechazar', onReject)}
+            dimmed={!isOnline}
+            onPress={whenOnline(() =>
+              confirmDecision('Rechazar reclamo', '¿Seguro que querés rechazar este reclamo?', 'Rechazar', onReject),
+            )}
           />
         </View>
       ) : null}
