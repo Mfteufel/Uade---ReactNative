@@ -56,9 +56,9 @@ const pointRow = (over = {}) => ({
 // Arma la base simulada de un reclamo. `state` se puede cambiar: el INSERT guarda la devolución para que
 // la consulta final (la respuesta al cliente) la encuentre, igual que haría la base.
 let state;
-const scenario = ({ claim = claimRow(), point = pointRow(), ret = null, insertError = null } = {}) => {
+const scenario = ({ claim = claimRow(), point = pointRow(), ret = null, insertError = null, updateRows = 1 } = {}) => {
   log.length = 0;
-  state = { claim, point, ret, insertError };
+  state = { claim, point, ret, insertError, updateRows };
   handlers = [
     [/SELECT publication_id, publisher_id, claimer_id FROM claims/, () => (state.claim ? rows(state.claim) : rows())],
     [/SELECT id FROM publications WHERE id = \$1 FOR UPDATE/, rows({ id: 'p_1' })],
@@ -73,7 +73,7 @@ const scenario = ({ claim = claimRow(), point = pointRow(), ret = null, insertEr
         return { rows: [], rowCount: 1 };
       },
     ],
-    [/UPDATE publications SET status = 'resolved'/, { rows: [], rowCount: 1 }],
+    [/UPDATE publications SET status = 'resolved'/, () => ({ rows: [], rowCount: state.updateRows })],
   ];
 };
 
@@ -156,4 +156,17 @@ test('un tercero o un reclamo inexistente reciben 404 y no se bloquea nada', asy
 test('si el UNIQUE de la base corta una carrera, responde 409 en vez de un error del servidor', async () => {
   scenario({ insertError: Object.assign(new Error('duplicate key value violates unique constraint'), { code: '23505' }) });
   await rejectsWith(confirmReturn('u_cla', 'c_1'), 409, /ya fue confirmada/);
+});
+
+test('la publicación solo pasa a resuelta desde "en reclamo" o "vencida"', async () => {
+  scenario();
+  await confirmReturn('u_cla', 'c_1');
+  const update = log.find((q) => /UPDATE publications SET status = 'resolved'/.test(q.text));
+  assert.match(update.text, /status IN \('in_claim', 'expired'\)/);
+});
+
+test('si la publicación no estaba en un estado que se pueda resolver, responde 409 y la transacción se deshace', async () => {
+  // El INSERT ya se ejecutó dentro de la transacción: el error hace que withTransaction lo deshaga (ROLLBACK real).
+  scenario({ updateRows: 0 });
+  await rejectsWith(confirmReturn('u_cla', 'c_1'), 409, /ya no admite/);
 });
