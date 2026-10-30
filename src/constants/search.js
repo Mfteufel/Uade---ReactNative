@@ -1,5 +1,3 @@
-import { colors } from './theme';
-
 // Los valores (perdi, hoy, open...) son los de la API; acá solo se traducen para mostrarlos.
 export const SITUATIONS = [
   { key: 'perdi', label: 'Perdí algo' },
@@ -27,7 +25,5 @@ export const PERIODS = [
 
 export const PERIOD_LABEL = { hoy: 'hoy', '3d': 'últimos 3 días', '7d': 'última semana', rango: 'fechas elegidas' };
 
-export const PUBLICATION_STATUS = {
-  open: { label: 'Abierta', color: colors.primary },
-  in_claim: { label: 'En reclamo', color: colors.warning },
-};
+// Mismo mapa que publications.js (incluye resolved y expired).
+export { PUBLICATION_STATUS } from './publications';
