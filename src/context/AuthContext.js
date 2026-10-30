@@ -4,6 +4,7 @@ import * as authApi from '../services/authApi';
 import { getErrorMessage, getErrorStatus } from '../services/errors';
 import { setupInterceptors } from '../services/api';
 import { setAccessToken } from '../services/tokenStore';
+import { clearDraft } from '../services/publicationDraft';
 import { authenticate, getBiometricErrorMessage, getBiometricStatus } from '../utils/biometrics';
 
 const AuthContext = createContext(null);
@@ -69,6 +70,18 @@ export function AuthProvider({ children }) {
     })();
   }, [startSession, endSession]);
 
+  // Cierre de sesión pedido por la persona: borra su borrador de "Publicar" (trae respuesta de verificación y dirección).
+  // Si falla el storage no se frena el cierre. La expiración forzada de sesión (endSession) no lo toca.
+  // Todavía no existe "eliminar cuenta" en la app: cuando se agregue, tiene que pasar por acá o llamar a clearDraft igual.
+  const logout = async () => {
+    try {
+      if (user) await clearDraft(user.id);
+    } catch {
+      // ignorado a propósito
+    }
+    await endSession();
+  };
+
   const login = async (email, password) => startSession(await authApi.login(email, password));
 
   // Pide la huella y, si es correcta, entra con el refresh token guardado.
@@ -115,7 +128,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user, setUser, loading, locked, isLoggedIn: !!user,
-    login, startSession, logout: endSession,
+    login, startSession, logout,
     biometricEnabled, setBiometricEnabled, unlock,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
