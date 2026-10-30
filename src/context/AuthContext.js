@@ -5,6 +5,7 @@ import { getErrorMessage, getErrorStatus } from '../services/errors';
 import { setupInterceptors } from '../services/api';
 import { setAccessToken } from '../services/tokenStore';
 import { clearDraft } from '../services/publicationDraft';
+import { clearOfflineData } from '../services/offlineData';
 import { authenticate, getBiometricErrorMessage, getBiometricStatus } from '../utils/biometrics';
 
 const AuthContext = createContext(null);
@@ -70,12 +71,13 @@ export function AuthProvider({ children }) {
     })();
   }, [startSession, endSession]);
 
-  // Cierre de sesión pedido por la persona: borra su borrador de "Publicar" (trae respuesta de verificación y dirección).
-  // Si falla el storage no se frena el cierre. La expiración forzada de sesión (endSession) no lo toca.
+  // Cierre de sesión pedido por la persona: borra su borrador de "Publicar" (trae respuesta de verificación y dirección)
+  // y lo que guarda el modo sin conexión. Si falla el storage no se frena el cierre. La expiración forzada de sesión
+  // (endSession) no lo toca.
   // Todavía no existe "eliminar cuenta" en la app: cuando se agregue, tiene que pasar por acá o llamar a clearDraft igual.
   const logout = async () => {
     try {
-      if (user) await clearDraft(user.id);
+      if (user) await Promise.allSettled([clearDraft(user.id), clearOfflineData(user.id)]);
     } catch {
       // ignorado a propósito
     }

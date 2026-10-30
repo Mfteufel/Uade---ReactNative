@@ -150,10 +150,13 @@ export default function usePublishForm({ initialType, onPublished }) {
     loadNeighborhoods();
   }, [loadNeighborhoods]);
 
-  // Si no había barrios guardados, se vuelven a pedir cuando vuelve la conexión.
+  // Si no había barrios guardados, se vuelven a pedir cuando vuelve la conexión. Solo al pasar de
+  // sin conexión a con conexión: si el servidor falla estando conectado, no queda reintentando en bucle.
+  const wasOnlineRef = useRef(isOnline);
   useEffect(() => {
-    if (isOnline && neighborhoodsError) loadNeighborhoods();
-  }, [isOnline]);
+    if (isOnline && !wasOnlineRef.current && neighborhoodsError) loadNeighborhoods();
+    wasOnlineRef.current = isOnline;
+  }, [isOnline, neighborhoodsError, loadNeighborhoods]);
 
   const setField = (name, value) => {
     setDraft((prev) => ({ ...prev, [name]: value }));

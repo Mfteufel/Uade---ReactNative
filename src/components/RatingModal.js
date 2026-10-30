@@ -14,7 +14,7 @@ const MAX_COMMENT = 280;
 function RatingForm({ item, onDone, onStale, onClose }) {
   const [positive, setPositive] = useState(null); // null hasta que elija
   const [comment, setComment] = useState('');
-  const { sending, error, send } = useReturnAction({ onDone, onStale });
+  const { sending, error, send, isOnline } = useReturnAction({ onDone, onStale });
 
   const submit = () => send(() => rateReturn(item.id, { positive, comment }));
 
@@ -43,7 +43,7 @@ function RatingForm({ item, onDone, onStale, onClose }) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
       <View style={styles.footer}>
-        <Button title="Enviar" onPress={submit} loading={sending} disabled={positive === null} />
+        <Button title="Enviar" onPress={submit} loading={sending} dimmed={!isOnline} disabled={positive === null} />
         <Button variant="link" title="Cancelar" onPress={onClose} disabled={sending} />
       </View>
     </View>

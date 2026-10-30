@@ -54,6 +54,12 @@ export async function removePending(userId, clientId) {
   await savePending(userId, list.filter((p) => p.clientId !== clientId));
 }
 
+// Al cerrar sesión: se borran las que no se mandaron, con sus fotos (traen la respuesta y la dirección).
+export async function clearPending(userId) {
+  for (const item of await loadPending(userId)) deletePhotos(item.clientId);
+  await AsyncStorage.removeItem(keyFor(userId));
+}
+
 // El servidor la rechazó (un dato inválido, por ejemplo): esa no se reintenta sola.
 export async function markFailed(userId, clientId, message) {
   const list = await loadPending(userId);

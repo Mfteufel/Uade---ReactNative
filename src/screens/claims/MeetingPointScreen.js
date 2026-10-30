@@ -126,7 +126,12 @@ export default function MeetingPointScreen({ route }) {
       ) : null}
       {meeting.canConfirmReturn ? (
         <View style={styles.actions}>
-          <Button title="Ya recibí el objeto" loading={sending} onPress={confirmReturn} />
+          <Button
+            title="Ya recibí el objeto"
+            loading={sending}
+            dimmed={!isOnline}
+            onPress={isOnline ? confirmReturn : () => showOfflineToast()}
+          />
         </View>
       ) : null}
       {point?.status === 'accepted' && meeting.iHaveTheObject && !meeting.completedReturn ? (

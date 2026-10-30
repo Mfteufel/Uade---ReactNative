@@ -54,7 +54,9 @@ export async function saveViewed(userId, publication) {
       JSON.stringify(previous.remoteUrls) === JSON.stringify(remoteUrls) &&
       previous.publication.photoUrls.every((uri) => uri.startsWith('file:'));
     const photoUrls = samePhotos ? previous.publication.photoUrls : await downloadPhotos(userId, publication.id, remoteUrls);
-    const entry = { savedAt: new Date().toISOString(), remoteUrls, publication: { ...publication, photoUrls } };
+    // La dirección exacta no se guarda: solo la ve quien tiene un reclamo aceptado (o el dueño).
+    const { exactAddress, ...shown } = publication;
+    const entry = { savedAt: new Date().toISOString(), remoteUrls, publication: { ...shown, photoUrls } };
     const list = all.filter((e) => e.publication.id !== publication.id);
     const kept = [entry, ...list];
     kept.slice(MAX_VIEWED).forEach((e) => deletePhotos(userId, e.publication.id));
@@ -62,6 +64,12 @@ export async function saveViewed(userId, publication) {
   } catch {
     // La copia es un extra: si falla, la pantalla anda igual.
   }
+}
+
+export async function clearViewed(userId) {
+  await AsyncStorage.removeItem(keyFor(userId));
+  const dir = new Directory(Paths.document, 'vistas', userId);
+  if (dir.exists) dir.delete();
 }
 
 // -> { savedAt, publication } o null

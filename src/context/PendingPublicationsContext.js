@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { USE_MOCK } from '../config';
 import { useAuth } from './AuthContext';
 import { useNetwork } from './NetworkContext';
@@ -9,6 +10,9 @@ import { getErrorMessage, getErrorStatus, isNetworkError } from '../services/err
 const PendingPublicationsContext = createContext(null);
 
 // Errores que se arreglan solos (sin red, sesión vencida, servidor caído): se reintenta más tarde.
+// Mientras haya pendientes, cada cuánto se reintenta (por ejemplo, con wifi pero sin internet).
+const RETRY_MS = 60 * 1000;
+
 const isTemporary = (error) => {
   const status = getErrorStatus(error);
   return isNetworkError(error) || status === 401 || status === 429 || status >= 500;
@@ -22,6 +26,9 @@ export function PendingPublicationsProvider({ children }) {
   const [pending, setPending] = useState([]);
   const [sentCount, setSentCount] = useState(0); // sube con cada envío, así Mis publicaciones recarga
   const sendingRef = useRef(false);
+  // El token es uno solo para toda la app: si cambia la cuenta a mitad del envío, las de la anterior no se mandan.
+  const userRef = useRef(userId);
+  userRef.current = userId;
 
   const reload = useCallback(async () => {
     setPending(userId ? await loadPending(userId).catch(() => []) : []);
@@ -43,6 +50,7 @@ export function PendingPublicationsProvider({ children }) {
     sendingRef.current = true;
     try {
       for (const item of await loadPending(userId)) {
+        if (userRef.current !== userId) break;
         if (item.error) continue;
         try {
           // Mismo clientId: si ya había llegado en un intento anterior, el servidor no la duplica.
@@ -60,7 +68,7 @@ export function PendingPublicationsProvider({ children }) {
       // Si no se pudo leer la lista, se prueba la próxima vez.
     } finally {
       sendingRef.current = false;
-      await reload();
+      if (userRef.current === userId) await reload(); // si cambió la cuenta, no pisar la lista de la nueva
     }
   }, [userId, reload]);
 
@@ -69,6 +77,21 @@ export function PendingPublicationsProvider({ children }) {
     reload();
     if (isOnline) sendAll();
   }, [isOnline, reload, sendAll]);
+
+  // Estar conectado no asegura tener internet: si el envío falló, se reintenta al volver a la app
+  // y cada tanto mientras siga abierta.
+  const waiting = pending.some((item) => !item.error);
+  useEffect(() => {
+    if (!isOnline || !waiting) return undefined;
+    const timer = setInterval(sendAll, RETRY_MS);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') sendAll();
+    });
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [isOnline, waiting, sendAll]);
 
   const value = { pending, sentCount, enqueue, discard, sendAll };
   return <PendingPublicationsContext.Provider value={value}>{children}</PendingPublicationsContext.Provider>;

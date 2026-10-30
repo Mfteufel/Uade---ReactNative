@@ -10,7 +10,7 @@ export default function MyPublicationsScreen({ navigation }) {
 
   let offlineText = '';
   if (offlineCopy?.savedAt) {
-    offlineText = 'Dispositivo sin conexión, mostrando las últimas publicaciones vistas. La información puede no estar actualizada.';
+    offlineText = 'Dispositivo sin conexión, mostrando la última copia de tus publicaciones. La información puede no estar actualizada.';
   } else if (offlineCopy) {
     offlineText = 'Dispositivo sin conexión, todavía no hay publicaciones guardadas.';
   }

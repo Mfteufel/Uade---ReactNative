@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNetwork } from '../context/NetworkContext';
 import { usePendingPublications } from '../context/PendingPublicationsContext';
 import { getMyPublications, renewPublication } from '../services/publicationsApi';
-import { readCache, writeCache } from '../services/offlineCache';
+import { myPublicationsCache, readCache, writeCache } from '../services/offlineCache';
 import { getErrorMessage, isNetworkError } from '../services/errors';
 import { categoryName } from '../constants/categories';
 
@@ -21,6 +21,20 @@ const pendingToCard = (item) => ({
   error: item.error,
 });
 
+// Para la copia sin conexión, solo lo que muestra la tarjeta: la respuesta de verificación,
+// la dirección y las coordenadas no quedan guardadas en el celular.
+const forOfflineCopy = (p) => ({
+  id: p.id,
+  type: p.type,
+  title: p.title,
+  status: p.status,
+  expiresAt: p.expiresAt,
+  occurredOn: p.occurredOn,
+  category: p.category,
+  neighborhood: p.neighborhood,
+  photoUrls: p.photoUrls,
+});
+
 export default function useMyPublications() {
   const { user } = useAuth();
   const { isOnline } = useNetwork();
@@ -31,7 +45,7 @@ export default function useMyPublications() {
   // null si los datos vienen del servidor. Sin conexión: { savedAt } de la copia (null si no hay copia).
   const [offlineCopy, setOfflineCopy] = useState(null);
   const [renewingId, setRenewingId] = useState(null);
-  const cacheName = `mis_publicaciones_${user.id}`;
+  const cacheName = myPublicationsCache(user.id);
 
   const showCached = useCallback(async () => {
     const cached = await readCache(cacheName);
@@ -47,7 +61,7 @@ export default function useMyPublications() {
       const list = await getMyPublications();
       setPublications(list);
       setOfflineCopy(null);
-      writeCache(cacheName, list);
+      writeCache(cacheName, list.map(forOfflineCopy));
     } catch (e) {
       if (isNetworkError(e)) await showCached();
       else setError(getErrorMessage(e));

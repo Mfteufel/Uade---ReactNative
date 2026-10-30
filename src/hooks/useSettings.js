@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { usePendingPublications } from '../context/PendingPublicationsContext';
 import { updateMe } from '../services/userApi';
 import { getErrorMessage } from '../services/errors';
 import { getBiometricStatus } from '../utils/biometrics';
@@ -11,6 +13,7 @@ export default function useSettings() {
   const [error, setError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [savingPhone, setSavingPhone] = useState(false);
+  const { pending } = usePendingPublications();
 
   useEffect(() => {
     getBiometricStatus().then(setStatus);
@@ -37,10 +40,20 @@ export default function useSettings() {
     }
   };
 
+  // Al cerrar sesión se borran las publicaciones pendientes de envío: si hay alguna, se avisa antes.
+  const confirmLogout = () => {
+    if (pending.length === 0) return logout();
+    const count = pending.length === 1 ? 'una publicación pendiente' : `${pending.length} publicaciones pendientes`;
+    Alert.alert('Cerrar sesión', `Tenés ${count} de envío. Si cerrás sesión se van a borrar.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: logout },
+    ]);
+  };
+
   return {
     user,
     biometricEnabled,
-    logout,
+    logout: confirmLogout,
     status,
     saving,
     error,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { search, saveRecentSearch } from '../services/searchApi';
 import { toRecentBody, toSearchParams } from '../utils/searchCriteria';
 import { getErrorMessage, isNetworkError } from '../services/errors';
-import { readCache, writeCache } from '../services/offlineCache';
+import { lastResultsCache, readCache, writeCache } from '../services/offlineCache';
 import { useAuth } from '../context/AuthContext';
 import { useNetwork } from '../context/NetworkContext';
 
@@ -20,7 +20,7 @@ export default function useSearchResults(initialFilters) {
   const [error, setError] = useState('');
   const [savedAt, setSavedAt] = useState(null); // con valor: se están mostrando resultados guardados
   const { user } = useAuth();
-  const cacheName = `ultimos_resultados_${user.id}`;
+  const cacheName = lastResultsCache(user.id);
   // run se crea una sola vez: la conexión se lee de una ref para tener siempre el valor actual.
   const { isOnline } = useNetwork();
   const onlineRef = useRef(isOnline);
