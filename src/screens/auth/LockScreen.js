@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Button from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
 import { colors, spacing } from '../../constants/theme';
@@ -27,6 +28,8 @@ export default function LockScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Fondo claro sin encabezado azul: íconos oscuros hasta el rediseño de esta pantalla. */}
+      <StatusBar style="dark" />
       <Text style={styles.title}>Hallado</Text>
       <Text style={styles.sub}>Usá tu huella o rostro para entrar.</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
