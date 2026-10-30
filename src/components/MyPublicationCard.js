@@ -3,12 +3,15 @@ import Button from './Button';
 import { PUBLICATION_STATUS } from '../constants/publications';
 import { colors, spacing } from '../constants/theme';
 import { daysUntil, formatApiDate, formatShortDate } from '../utils/dates';
+import { showOfflineToast } from '../utils/offlineToast';
 
 const RENEW_WARNING_DAYS = 7;
 
 // Tarjeta de "Mis publicaciones". Se puede renovar si venció o si le quedan pocos días.
-export default function MyPublicationCard({ publication, onRenew, renewing }) {
+// Las pendientes de envío todavía no vencen; si el servidor las rechazó, se pueden descartar.
+export default function MyPublicationCard({ publication, onRenew, renewing, onDiscard, offline }) {
   const status = PUBLICATION_STATUS[publication.status] || { label: publication.status, color: colors.muted };
+  const isPending = publication.status === 'pending';
   const daysLeft = daysUntil(publication.expiresAt);
   const isActive = publication.status === 'open' || publication.status === 'in_claim';
   const canRenew = publication.status === 'expired' || (isActive && daysLeft <= RENEW_WARNING_DAYS);
@@ -30,8 +33,23 @@ export default function MyPublicationCard({ publication, onRenew, renewing }) {
           ) : null}
         </View>
       </View>
+      {isPending && !publication.error ? (
+        <Text style={styles.meta}>Se va a enviar sola cuando haya conexión.</Text>
+      ) : null}
+      {isPending && publication.error ? (
+        <>
+          <Text style={styles.error}>No se pudo publicar: {publication.error}</Text>
+          <Button variant="link" title="Descartar" onPress={() => onDiscard(publication.id)} />
+        </>
+      ) : null}
       {canRenew ? (
-        <Button variant="link" title="Renovar 30 días" onPress={() => onRenew(publication.id)} loading={renewing} />
+        <Button
+          variant="link"
+          title="Renovar 30 días"
+          onPress={() => (offline ? showOfflineToast() : onRenew(publication.id))}
+          loading={renewing}
+          dimmed={offline}
+        />
       ) : null}
     </View>
   );
@@ -46,4 +64,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700', color: colors.text },
   meta: { color: colors.muted, marginTop: 2 },
   status: { fontWeight: '700', marginTop: spacing.xs },
+  error: { color: colors.error, marginTop: spacing.xs },
 });

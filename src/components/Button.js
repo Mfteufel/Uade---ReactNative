@@ -2,14 +2,15 @@ import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { colors, spacing } from '../constants/theme';
 
 // variant: 'primary' (relleno) | 'link' (solo texto)
-export default function Button({ title, onPress, loading = false, disabled = false, variant = 'primary' }) {
+// dimmed: se ve gris pero se puede tocar (para avisar algo, como que falta conexión).
+export default function Button({ title, onPress, loading = false, disabled = false, dimmed = false, variant = 'primary' }) {
   const isLink = variant === 'link';
   const inactive = disabled || loading;
   return (
     <Pressable
       onPress={onPress}
       disabled={inactive}
-      style={[styles.base, isLink ? styles.link : styles.primary, inactive && styles.inactive]}
+      style={[styles.base, isLink ? styles.link : styles.primary, (inactive || dimmed) && styles.inactive]}
     >
       {loading ? (
         <ActivityIndicator color={isLink ? colors.primary : '#fff'} />

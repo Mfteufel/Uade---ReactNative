@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import Button from '../../components/Button';
 import Chip from '../../components/Chip';
+import OfflineNotice from '../../components/OfflineNotice';
 import PublicationCard from '../../components/PublicationCard';
 import SearchFiltersModal from '../../components/SearchFiltersModal';
 import useSearchResults from '../../hooks/useSearchResults';
@@ -11,7 +12,7 @@ const soon = (what) => Alert.alert('Próximamente', what);
 
 export default function ResultsScreen({ navigation, route }) {
   const {
-    filters, items, hasMore, loading, loadingMore, refreshing, error, canSortByDistance,
+    filters, items, hasMore, loading, loadingMore, refreshing, error, savedAt, canSortByDistance,
     applyFilters, setOrder, loadMore, refresh, retry,
   } = useSearchResults(route.params.filters);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -32,6 +33,11 @@ export default function ResultsScreen({ navigation, route }) {
 
   const header = (
     <View style={styles.toolbar}>
+      {savedAt ? (
+        <OfflineNotice
+          text="Dispositivo sin conexión, mostrando los últimos resultados cargados. La información puede no estar actualizada."
+        />
+      ) : null}
       <View style={styles.row}>
         <Chip label="Más recientes" selected={filters.orden === 'recientes'} onPress={() => setOrder('recientes')} />
         <Chip

@@ -2,15 +2,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
+import { useNetwork } from '../context/NetworkContext';
+import { usePendingPublications } from '../context/PendingPublicationsContext';
 import { createPublication, getNeighborhoodsForPublish } from '../services/publicationsApi';
 import { clearDraft, loadDraft, saveDraft } from '../services/publicationDraft';
-import { getErrorMessage } from '../services/errors';
+import { getErrorMessage, isNetworkError } from '../services/errors';
 import { MAX_PHOTOS, TIME_SLOTS } from '../constants/publications';
 import { addDays, todayApiDate } from '../utils/dates';
 import { createUuid } from '../utils/uuid';
 
 const PICKER_OPTIONS = { mediaTypes: ['images'], quality: 0.7 };
 const MAX_SUGGESTIONS = 8;
+const LOCATION_TIMEOUT_MS = 15000;
+
+const withTimeout = (promise, ms) =>
+  Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo agotado')), ms))]);
 
 const plain = (text) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
@@ -94,6 +100,8 @@ function addressFromPlace(place) {
 // initialType: 'lost' | 'found' cuando se llega desde el buscador sin resultados.
 export default function usePublishForm({ initialType, onPublished }) {
   const { user } = useAuth();
+  const { isOnline } = useNetwork();
+  const { enqueue } = usePendingPublications();
   const [draft, setDraft] = useState(null); // null mientras se lee el borrador guardado
   const [restored, setRestored] = useState(false);
   const [errors, setErrors] = useState({});
@@ -141,6 +149,11 @@ export default function usePublishForm({ initialType, onPublished }) {
   useEffect(() => {
     loadNeighborhoods();
   }, [loadNeighborhoods]);
+
+  // Si no había barrios guardados, se vuelven a pedir cuando vuelve la conexión.
+  useEffect(() => {
+    if (isOnline && neighborhoodsError) loadNeighborhoods();
+  }, [isOnline]);
 
   const setField = (name, value) => {
     setDraft((prev) => ({ ...prev, [name]: value }));
@@ -218,13 +231,22 @@ export default function usePublishForm({ initialType, onPublished }) {
         setLocationError('Necesitamos permiso para usar tu ubicación. Podés escribir la dirección.');
         return;
       }
-      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      // Sin conexión, la precisión Balanced (wifi y antenas) se queda esperando: usamos el GPS.
+      // Con tope de tiempo y, si no llega, la última ubicación conocida.
+      const accuracy = isOnline ? Location.Accuracy.Balanced : Location.Accuracy.High;
+      const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy }), LOCATION_TIMEOUT_MS)
+        .catch(() => Location.getLastKnownPositionAsync());
+      if (!position) throw new Error('Sin ubicación');
+      const { coords } = position;
       let address = '';
-      try {
-        const [place] = await Location.reverseGeocodeAsync(coords);
-        address = addressFromPlace(place);
-      } catch {
-        // Sin dirección sugerida igual sirven las coordenadas.
+      // Pasar de coordenadas a dirección necesita internet.
+      if (isOnline) {
+        try {
+          const [place] = await withTimeout(Location.reverseGeocodeAsync(coords), LOCATION_TIMEOUT_MS);
+          address = addressFromPlace(place);
+        } catch {
+          // Sin dirección sugerida igual sirven las coordenadas.
+        }
       }
       setDraft((prev) => ({
         ...prev,
@@ -267,9 +289,20 @@ export default function usePublishForm({ initialType, onPublished }) {
     setPublishing(true);
     setFormError('');
     try {
-      const publication = await createPublication(toRequestBody(draft), draft.photos);
+      const body = toRequestBody(draft);
+      let pending = !isOnline;
+      if (!pending) {
+        try {
+          await createPublication(body, draft.photos);
+        } catch (e) {
+          // Si se cortó en el medio queda pendiente: al reenviarla, el clientId evita que se duplique.
+          if (!isNetworkError(e)) throw e;
+          pending = true;
+        }
+      }
+      if (pending) await enqueue(body, draft.photos, draft.neighborhood.name);
       await clearDraft(user.id).catch(() => {});
-      onPublished?.(publication);
+      onPublished?.({ pending });
     } catch (e) {
       setFormError(getErrorMessage(e));
     } finally {
@@ -279,6 +312,7 @@ export default function usePublishForm({ initialType, onPublished }) {
   };
 
   return {
+    isOnline,
     draft, steps, stepName, restored,
     errors, formError, publishing,
     setField, goNext, goBack, discardDraft, publish,
