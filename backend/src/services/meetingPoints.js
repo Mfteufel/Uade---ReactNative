@@ -14,6 +14,9 @@ const MAX_NOTES_LEN = 280;
 // en una "perdida" quien reclamó "Lo encontré". Es quien propone el primer lugar.
 const holderIdOf = (claim) => (claim.publication_type === 'found' ? claim.publisher_id : claim.claimer_id);
 
+// Quién recupera el objeto: la otra parte. Es quien confirma que la devolución se concretó.
+const recoveredIdOf = (claim) => (holderIdOf(claim) === claim.publisher_id ? claim.claimer_id : claim.publisher_id);
+
 // Valida el body de una propuesta. Devuelve { input } o { error: { status, message } }.
 function buildMeetingInput(body) {
   if (body === undefined || body === null) body = {};
@@ -49,8 +52,22 @@ function meetingActions({ claim, current, userId }) {
   return { canPropose: true, canAccept: true, reason: null, status: null };
 }
 
+// Si esta persona puede confirmar ahora que la devolución se concretó.
+// La confirma quien RECUPERA el objeto: la fila de returns le suma puntos de reputación a quien devolvió,
+// así que quien devuelve no puede registrarla por su cuenta. Se exige el punto de encuentro acordado.
+function returnActions({ claim, current, completedReturn, userId }) {
+  if (completedReturn) return { canConfirm: false, reason: 'La devolución ya fue confirmada.', status: 409 };
+  if (userId !== recoveredIdOf(claim)) {
+    return { canConfirm: false, reason: 'La devolución la confirma quien recupera el objeto.', status: 403 };
+  }
+  if (!current || current.status !== 'accepted') {
+    return { canConfirm: false, reason: 'Primero tienen que acordar el punto de encuentro.', status: 409 };
+  }
+  return { canConfirm: true, reason: null, status: null };
+}
+
 // Arma lo que ve quien consulta el encuentro. Solo salen datos de las dos partes del reclamo.
-function toMeetingView({ claim, current, userId }) {
+function toMeetingView({ claim, current, completedReturn = null, userId }) {
   const isClaimer = claim.claimer_id === userId;
   const actions = meetingActions({ claim, current, userId });
   const toNumber = (v) => (v === null || v === undefined ? null : Number(v));
@@ -77,6 +94,11 @@ function toMeetingView({ claim, current, userId }) {
     canPropose: actions.canPropose,
     canAccept: actions.canAccept,
     reason: actions.reason,
+    // El id de returns es bigint (pg lo entrega como texto): se expone como número.
+    completedReturn: completedReturn
+      ? { id: Number(completedReturn.id), createdAt: new Date(completedReturn.created_at).toISOString() }
+      : null,
+    canConfirmReturn: returnActions({ claim, current, completedReturn, userId }).canConfirm,
   };
 }
 
@@ -87,7 +109,7 @@ function toMeetingView({ claim, current, userId }) {
 const newMeetingId = () => 'm_' + crypto.randomBytes(12).toString('hex');
 
 const CLAIM_SQL = `
-  SELECT c.id, c.publisher_id, c.claimer_id, c.publication_type, c.status,
+  SELECT c.id, c.publication_id, c.publisher_id, c.claimer_id, c.publication_type, c.status,
          pub.name AS publisher_name, cl.name AS claimer_name
     FROM claims c
     JOIN users pub ON pub.id = c.publisher_id
@@ -99,6 +121,9 @@ const CURRENT_SQL = `
     FROM meeting_points mp
     JOIN users u ON u.id = mp.proposed_by
    WHERE mp.claim_id = $1 AND mp.status IN ('proposed', 'accepted')`;
+
+// Hay a lo sumo una devolución por reclamo (UNIQUE claim_id).
+const RETURN_SQL = 'SELECT id, created_at FROM returns WHERE claim_id = $1';
 
 // El reclamo tiene que existir, ser de esta persona y estar aceptado. A quien no es parte no se le revela que existe.
 // `db` es el pool o el cliente de una transacción; con `lock` se bloquea la fila del reclamo.
@@ -116,8 +141,8 @@ async function loadAcceptedClaim(db, userId, claimId, { lock = false } = {}) {
 
 async function getMeeting(userId, claimId) {
   const claim = await loadAcceptedClaim({ query }, userId, claimId);
-  const r = await query(CURRENT_SQL, [claimId]);
-  return toMeetingView({ claim, current: r.rows[0] || null, userId });
+  const [point, done] = await Promise.all([query(CURRENT_SQL, [claimId]), query(RETURN_SQL, [claimId])]);
+  return toMeetingView({ claim, current: point.rows[0] || null, completedReturn: done.rows[0] || null, userId });
 }
 
 // Propone el primer lugar (quien tiene el objeto) o sugiere otro distinto al vigente (la otra parte).
@@ -186,12 +211,53 @@ async function acceptMeeting(userId, meetingPointId) {
   return getMeeting(userId, claimId);
 }
 
+// Quien recupera el objeto confirma la devolución: se registra en returns y la publicación queda resuelta.
+// Todo en una transacción; el reclamo sigue "accepted" (el TPO no define otro estado).
+async function confirmReturn(userId, claimId) {
+  try {
+    await withTransaction(async (c) => {
+      const first = await c.query('SELECT publication_id, publisher_id, claimer_id FROM claims WHERE id = $1', [claimId]);
+      const row = first.rows[0];
+      // A quien no es parte no se le revela que el reclamo existe, y no se bloquea nada por un reclamo ajeno.
+      if (!row || (row.publisher_id !== userId && row.claimer_id !== userId)) {
+        throw new HttpError(404, 'Reclamo no encontrado.');
+      }
+      // Primero la publicación y después el reclamo, igual que al aceptar o rechazar un reclamo, para no trabarse entre pedidos.
+      await c.query('SELECT id FROM publications WHERE id = $1 FOR UPDATE', [row.publication_id]);
+      const claim = await loadAcceptedClaim(c, userId, claimId, { lock: true });
+      const point = await c.query(`${CURRENT_SQL} FOR UPDATE OF mp`, [claimId]);
+      const current = point.rows[0] || null;
+      const done = await c.query(RETURN_SQL, [claimId]);
+
+      // El servidor valida el rol y el estado: dos confirmaciones simultáneas se atienden de a una.
+      const actions = returnActions({ claim, current, completedReturn: done.rows[0] || null, userId });
+      if (!actions.canConfirm) throw new HttpError(actions.status, actions.reason);
+
+      // Los valores salen del reclamo, no del pedido: user_id es quien devolvió y recovered_by_id quien recuperó.
+      await c.query(
+        `INSERT INTO returns (user_id, recovered_by_id, claim_id, meeting_point_id)
+         VALUES ($1, $2, $3, $4)`,
+        [holderIdOf(claim), recoveredIdOf(claim), claimId, current.id]
+      );
+      await c.query(`UPDATE publications SET status = 'resolved', status_changed_at = now() WHERE id = $1`, [claim.publication_id]);
+    });
+  } catch (e) {
+    // Red de seguridad: el UNIQUE (claim_id) de la base corta cualquier carrera que se haya escapado.
+    if (e && e.code === '23505') throw new HttpError(409, 'La devolución ya fue confirmada.');
+    throw e;
+  }
+  return getMeeting(userId, claimId);
+}
+
 module.exports = {
   holderIdOf,
+  recoveredIdOf,
   buildMeetingInput,
   meetingActions,
+  returnActions,
   toMeetingView,
   getMeeting,
   proposeMeeting,
   acceptMeeting,
+  confirmReturn,
 };

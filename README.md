@@ -204,10 +204,11 @@ Todo lo siguiente existe hoy en la rama principal.
 - Probá rechazar el reclamo pendiente desde la cuenta de Carla. Aceptarlo responde 409: en los datos de ejemplo su publicación ya figura "en reclamo" y solo se acepta un reclamo sobre una publicación abierta.
 
 **8. Punto de encuentro**
-- Con `carla.seed@hallado.com` o `bruno.seed@hallado.com`: "Mis reclamos", el reclamo aceptado sobre la publicación de Bruno, "Coordinar punto de encuentro". Muestra el lugar ya acordado ("Estación Primera Junta") y el botón "Cómo llegar", que abre Google Maps (o la app de mapas) con esa dirección como destino.
+- Con `carla.seed@hallado.com` o `bruno.seed@hallado.com`: "Mis reclamos", el reclamo aceptado sobre la publicación de Bruno, "Coordinar punto de encuentro". Muestra el lugar ya acordado ("Estación Primera Junta"), la "Devolución confirmada" (el seed trae esa devolución ya registrada) y el botón "Cómo llegar", que abre Google Maps (o la app de mapas) con esa dirección como destino.
 - Proponer, aceptar o sugerir otro lugar necesita un reclamo aceptado que todavía no tenga lugar vigente, y los datos de ejemplo no traen uno. El reclamo pendiente de Diego tampoco sirve: en los datos de ejemplo su publicación ya figura "en reclamo", así que aceptarlo responde 409. Para probar ese flujo, creá un reclamo desde el detalle de una publicación (con una cuenta que no sea la del publicador, botón "Es mío" o "Lo encontré") y pedile al publicador que lo acepte desde "Mis reclamos"; el punto de encuentro se coordina desde el reclamo aceptado (ver [`API_CONTRACT.md`](API_CONTRACT.md), secciones "Reclamos" y "Punto de encuentro").
 - Quien tiene el objeto propone primero: el publicador si la publicación es de algo encontrado, o quien reclamó "Lo encontré" si es de algo perdido. La otra parte acepta el lugar o sugiere otro.
-- Solo coordina el lugar. Confirmar la devolución y las valoraciones todavía no están.
+- Con el lugar acordado, quien recupera el objeto confirma la devolución con "Ya recibí el objeto": se registra en `returns` (de ahí sale el historial) y la publicación pasa a "Resuelta". Quien lo entregó no puede confirmarla.
+- Las valoraciones y el historial todavía no están.
 
 ## Estado de la entrega
 

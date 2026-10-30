@@ -2,7 +2,14 @@ process.env.JWT_SECRET = 'x'.repeat(48);
 process.env.PUBLIC_URL = 'http://test.local:3000';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { holderIdOf, buildMeetingInput, meetingActions, toMeetingView } = require('../src/services/meetingPoints');
+const {
+  holderIdOf,
+  recoveredIdOf,
+  buildMeetingInput,
+  meetingActions,
+  returnActions,
+  toMeetingView,
+} = require('../src/services/meetingPoints');
 
 // Reclamo aceptado sobre una publicación "encontrada" (Pablo publicó, Clara reclamó "Es mío").
 const claimFound = {
@@ -114,4 +121,60 @@ test('sin punto vigente la vista trae meetingPoint en null y explica por qué no
   assert.equal(view.canPropose, false);
   assert.match(view.reason, /quien tiene el objeto/);
   assert.equal(toMeetingView({ claim: claimLost, current: null, userId: 'u_cla' }).canPropose, true);
+});
+
+// ---------------------------------------------------------------------------
+// Confirmar la devolución
+// ---------------------------------------------------------------------------
+
+const accepted = point({ status: 'accepted', responded_at: '2026-10-25T12:00:00.000Z' });
+const done = { id: '42', created_at: '2026-10-26T09:00:00.000Z' };
+
+test('recupera el objeto la otra parte: el solicitante si es "encontrada" y el publicador si es "perdida"', () => {
+  assert.equal(recoveredIdOf(claimFound), 'u_cla');
+  assert.equal(recoveredIdOf(claimLost), 'u_pub');
+});
+
+test('solo confirma la devolución quien recupera el objeto', () => {
+  // En "encontrada" tiene el objeto Pablo (publicador): no puede confirmar él mismo, porque la fila le suma puntos.
+  const holder = returnActions({ claim: claimFound, current: accepted, completedReturn: null, userId: 'u_pub' });
+  assert.equal(holder.canConfirm, false);
+  assert.equal(holder.status, 403);
+
+  const recovers = returnActions({ claim: claimFound, current: accepted, completedReturn: null, userId: 'u_cla' });
+  assert.equal(recovers.canConfirm, true);
+  assert.equal(recovers.status, null);
+
+  // En "perdida" se invierten los roles.
+  assert.equal(returnActions({ claim: claimLost, current: accepted, completedReturn: null, userId: 'u_pub' }).canConfirm, true);
+  assert.equal(returnActions({ claim: claimLost, current: accepted, completedReturn: null, userId: 'u_cla' }).status, 403);
+});
+
+test('no se confirma la devolución si el punto de encuentro no está acordado', () => {
+  for (const current of [null, point({ status: 'proposed' })]) {
+    const r = returnActions({ claim: claimFound, current, completedReturn: null, userId: 'u_cla' });
+    assert.equal(r.canConfirm, false);
+    assert.equal(r.status, 409);
+    assert.match(r.reason, /acordar el punto de encuentro/);
+  }
+});
+
+test('una devolución ya confirmada no se puede confirmar de nuevo', () => {
+  for (const userId of ['u_pub', 'u_cla']) {
+    const r = returnActions({ claim: claimFound, current: accepted, completedReturn: done, userId });
+    assert.equal(r.canConfirm, false);
+    assert.equal(r.status, 409);
+  }
+});
+
+test('la vista indica si puede confirmar y trae la devolución ya registrada', () => {
+  const before = toMeetingView({ claim: claimFound, current: accepted, userId: 'u_cla' });
+  assert.equal(before.canConfirmReturn, true);
+  assert.equal(before.completedReturn, null);
+  assert.equal(toMeetingView({ claim: claimFound, current: accepted, userId: 'u_pub' }).canConfirmReturn, false);
+
+  const after = toMeetingView({ claim: claimFound, current: accepted, completedReturn: done, userId: 'u_cla' });
+  assert.equal(after.canConfirmReturn, false);
+  // El id de returns llega como texto desde pg (bigint) y se expone como número.
+  assert.deepEqual(after.completedReturn, { id: 42, createdAt: '2026-10-26T09:00:00.000Z' });
 });
