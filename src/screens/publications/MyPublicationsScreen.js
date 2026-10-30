@@ -33,6 +33,7 @@ export default function MyPublicationsScreen({ navigation }) {
           renderItem={({ item }) => (
             <MyPublicationCard
               publication={item}
+              onPress={(publicationId) => navigation.navigate('PublicationDetail', { publicationId })}
               onRenew={renew}
               renewing={renewingId === item.id}
               onDiscard={discard}
