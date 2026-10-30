@@ -99,6 +99,8 @@ Los autores te pasan **en privado** dos archivos. Copialos dentro de `backend/` 
 
 No los subas al repositorio ni los compartas (git los ignora).
 
+`JWT_SECRET` se genera solo la primera vez que corrés el lanzador y se guarda en `backend/.env.demo.local` (se crea si no existe), así que no hay que configurarlo a mano. Si `backend/.env.demo.neon.local` ya trae uno, se usa ese.
+
 ### 3. Levantar backend y app
 
 Por Wi-Fi (misma red):
@@ -202,18 +204,24 @@ Todo lo siguiente existe hoy en la rama principal.
 - Probá rechazar el reclamo pendiente desde la cuenta de Carla. Aceptarlo responde 409: en los datos de ejemplo su publicación ya figura "en reclamo" y solo se acepta un reclamo sobre una publicación abierta.
 
 **8. Punto de encuentro**
-- Con `carla.seed@hallado.com` o `bruno.seed@hallado.com`: "Mis reclamos", el reclamo aceptado sobre la publicación de Bruno, "Coordinar punto de encuentro". Muestra el lugar ya acordado ("Estación Primera Junta") y el botón "Cómo llegar", que abre Google Maps (o la app de mapas) con esa dirección como destino.
+- Con `carla.seed@hallado.com` o `bruno.seed@hallado.com`: "Mis reclamos", el reclamo aceptado sobre la publicación de Bruno, "Coordinar punto de encuentro". Muestra el lugar ya acordado ("Estación Primera Junta"), la "Devolución confirmada" (el seed trae esa devolución ya registrada) y el botón "Cómo llegar", que abre Google Maps (o la app de mapas) con esa dirección como destino.
 - Proponer, aceptar o sugerir otro lugar necesita un reclamo aceptado que todavía no tenga lugar vigente, y los datos de ejemplo no traen uno. El reclamo pendiente de Diego tampoco sirve: en los datos de ejemplo su publicación ya figura "en reclamo", así que aceptarlo responde 409. Para probar ese flujo, creá un reclamo desde el detalle de una publicación (con una cuenta que no sea la del publicador, botón "Es mío" o "Lo encontré") y pedile al publicador que lo acepte desde "Mis reclamos"; el punto de encuentro se coordina desde el reclamo aceptado (ver [`API_CONTRACT.md`](API_CONTRACT.md), secciones "Reclamos" y "Punto de encuentro").
 - Quien tiene el objeto propone primero: el publicador si la publicación es de algo encontrado, o quien reclamó "Lo encontré" si es de algo perdido. La otra parte acepta el lugar o sugiere otro.
-- Solo coordina el lugar. Confirmar la devolución y las valoraciones todavía no están.
+- Con el lugar acordado, quien recupera el objeto confirma la devolución con "Ya recibí el objeto": se registra en `returns` (de ahí sale el historial) y la publicación pasa a "Resuelta". Quien lo entregó no puede confirmarla.
+- Las valoraciones y el historial todavía no están.
+
+**10. Historial y valoraciones**
+- Con `bruno.seed@hallado.com` o `carla.seed@hallado.com`: "Mi historial" (desde la pantalla principal), pestañas "Devolví" / "Recuperé", y filtros de fecha, tipo (perdido / encontrado) y categoría.
+- Valorar y agradecer: solo dentro de los 7 días desde la devolución. La devolución de los datos de ejemplo puede estar vencida; los autores la refrescan con `db:refrescar-fechas`.
+- El agradecimiento se ve en el perfil público de quien devolvió, abajo de las insignias.
+- Las devoluciones nuevas salen del punto 8 ("Ya recibí el objeto"), que está en el PR #15.
 
 ## Estado de la entrega
 
 Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
 
 - Modo sin conexión.
-- Alertas y publicaciones seguidas.
-- Historial y valoraciones.
+- Alertas y publicaciones seguidas: el botón seguir / dejar de seguir ya funciona desde el detalle de la publicación (`POST` y `DELETE /seguidas`), pero las secciones "Mis alertas" y "Seguidas" (listados y novedades) todavía no existen.
 
 ## Qué no hace el modo Neon
 
@@ -261,6 +269,7 @@ Se corren en la raíz del proyecto.
 | `npm run db:preparar` | Migra y siembra la base local (solo local). |
 | `npm run db:refrescar-fechas` | Actualiza las fechas de los datos de ejemplo (agregá `-- --neon` para Neon; es para el equipo). |
 | `npm run db:migrar-neon` | Aplica migraciones pendientes en Neon, con confirmación. Es para el equipo. |
+| `npm run web` | Abre la app en el navegador (`expo start --web`). |
 | `npm run test:backend` | Tests del backend con base local (solo local). |
 
 Más detalle del backend (variables de entorno, esquema, migraciones, cuentas del seed) en [`backend/README.md`](backend/README.md). El contrato de la API está en [`API_CONTRACT.md`](API_CONTRACT.md).

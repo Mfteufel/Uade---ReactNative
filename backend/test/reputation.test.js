@@ -3,7 +3,7 @@ process.env.PUBLIC_URL = 'http://test.local:3000';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { computeReputation } = require('../src/services/reputation');
-const { toPublicProfile } = require('../src/services/publicProfile');
+const { MAX_THANKS, toPublicProfile, toPublicThanks } = require('../src/services/publicProfile');
 
 const c = (returns, positive, negative) => computeReputation({ returns, positive, negative });
 
@@ -42,4 +42,33 @@ test('toPublicProfile devuelve exactamente la lista blanca', () => {
   const out2 = toPublicProfile({ ...row, photo_id: null }, rep);
   assert.equal(out2.photoUri, null);
   assert.deepEqual(Object.keys(out2).sort(), ['id', 'memberSince', 'name', 'photoUri', 'reputation']);
+});
+
+// Fila de thanks + autor, con columnas de más para confirmar que no se filtran.
+const thanksRow = (over = {}) => ({
+  message: 'Gracias por devolverme el celular!', created_at: new Date('2026-10-27T20:00:00.000Z'),
+  name: 'Bruno', photo_id: 'q',
+  id: 't1', return_id: 60, author_id: 'u_bruno', recipient_id: 'u_x', claim_id: 'c_1', email: 'b@y.com', phone: '2', title: 'Celular',
+  ...over,
+});
+
+test('toPublicProfile con thanks: la lista blanca suma solo thanks', () => {
+  const rep = c(1, 1, 0);
+  const row = { id: 'u_x', name: 'X', created_at: '2024-03-10T12:00:00.000Z', email: 'x@y.com', phone: '1', photo_id: null };
+  const out = toPublicProfile(row, rep, [thanksRow()]);
+  assert.deepEqual(Object.keys(out).sort(), ['id', 'memberSince', 'name', 'photoUri', 'reputation', 'thanks']);
+  assert.deepEqual(out.thanks, [
+    { message: 'Gracias por devolverme el celular!', createdAt: '2026-10-27T20:00:00.000Z', author: { name: 'Bruno', photoUri: 'http://test.local:3000/photos/q' } },
+  ]);
+  assert.deepEqual(toPublicProfile(row, rep, []).thanks, []); // pedido y sin agradecimientos: lista vacía
+  assert.equal('thanks' in toPublicProfile(row, rep), false); // sin pedirlo (detalle de publicación): no existe
+});
+
+test('toPublicThanks: cada item trae solo message, createdAt y author { name, photoUri }', () => {
+  const item = toPublicThanks(thanksRow());
+  assert.deepEqual(Object.keys(item).sort(), ['author', 'createdAt', 'message']);
+  assert.deepEqual(Object.keys(item.author).sort(), ['name', 'photoUri']);
+  assert.doesNotMatch(JSON.stringify(item), /t1|60|u_bruno|u_x|c_1|b@y\.com|Celular"/);
+  assert.equal(toPublicThanks(thanksRow({ photo_id: null })).author.photoUri, null);
+  assert.equal(MAX_THANKS, 20);
 });

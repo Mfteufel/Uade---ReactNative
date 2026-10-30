@@ -4,6 +4,7 @@ import Avatar from '../../components/Avatar';
 import BadgeList from '../../components/BadgeList';
 import Button from '../../components/Button';
 import ReputationCard from '../../components/ReputationCard';
+import ThanksList from '../../components/ThanksList';
 import { getPublicProfile } from '../../services/userApi';
 import { getErrorMessage } from '../../services/errors';
 import { formatMemberSince } from '../../utils/memberSince';
@@ -53,6 +54,7 @@ export default function PublicProfileScreen({ route }) {
       </View>
       <ReputationCard reputation={profile.reputation} />
       <BadgeList reputation={profile.reputation} />
+      <ThanksList thanks={profile.thanks} />
     </ScrollView>
   );
 }

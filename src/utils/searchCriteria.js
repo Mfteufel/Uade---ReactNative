@@ -5,6 +5,18 @@
 export const situacionToTipo = (situacion) => (situacion === 'perdi' ? 'found' : 'lost');
 export const tipoToSituacion = (tipo) => (tipo === 'found' ? 'perdi' : 'encontre');
 
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Valida un rango de días 'AAAA-MM-DD'. required: los dos son obligatorios (período "rango" del buscador);
+// si no, cada uno es opcional por separado (historial). Devuelve el texto del problema o ''.
+export function dayRangeError(desde, hasta, { required = true } = {}) {
+  for (const day of [desde, hasta]) {
+    if ((required || day) && !DAY_RE.test(day || '')) return 'Las fechas se escriben así: AAAA-MM-DD (ej. 2026-10-24).';
+  }
+  if (desde && hasta && desde > hasta) return 'La fecha "desde" no puede ser posterior a "hasta".';
+  return '';
+}
+
 // Argentina no tiene horario de verano: Buenos Aires es siempre UTC-3.
 const BUENOS_AIRES_OFFSET_MS = 3 * 60 * 60 * 1000;
 

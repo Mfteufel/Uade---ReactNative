@@ -32,21 +32,15 @@ function leerEnv(archivo) {
   return env;
 }
 
-// Local: crea backend/.env.demo.local desde la plantilla y completa JWT_SECRET si falta.
-// Neon: no crea nada; si falta el archivo, explica cómo conseguirlo. Nunca imprime valores.
-function asegurarEnv({ neon = false } = {}) {
-  if (neon) {
-    if (!fs.existsSync(ENV_NEON)) {
-      abortar('falta backend/.env.demo.neon.local. Pedíselo en privado a los autores y ponelo en backend/.');
-    }
-    return ENV_NEON;
-  }
+// Crea backend/.env.demo.local desde la plantilla si falta y completa JWT_SECRET (aleatorio) si está vacío.
+// Preserva el resto del archivo y no duplica la clave. Devuelve el secreto. Nunca imprime valores.
+function asegurarSecretoLocal() {
   if (!fs.existsSync(ENV_LOCAL)) {
     fs.copyFileSync(PLANTILLA, ENV_LOCAL);
     fs.chmodSync(ENV_LOCAL, 0o600);
     console.log('Se creó backend/.env.demo.local desde la plantilla.');
   }
-  if (!leerEnv(ENV_LOCAL).JWT_SECRET) {
+  if (!leerEnv(ENV_LOCAL).JWT_SECRET?.trim()) {
     const secreto = crypto.randomBytes(48).toString('base64url');
     const texto = fs.readFileSync(ENV_LOCAL, 'utf8');
     const nuevo = /^\s*JWT_SECRET\s*=.*$/m.test(texto)
@@ -55,7 +49,27 @@ function asegurarEnv({ neon = false } = {}) {
     fs.writeFileSync(ENV_LOCAL, nuevo);
     console.log('Se generó JWT_SECRET en backend/.env.demo.local.');
   }
+  return leerEnv(ENV_LOCAL).JWT_SECRET;
+}
+
+// Local: asegura backend/.env.demo.local con su JWT_SECRET.
+// Neon: no crea nada; si falta el archivo, explica cómo conseguirlo. Nunca imprime valores.
+function asegurarEnv({ neon = false } = {}) {
+  if (neon) {
+    if (!fs.existsSync(ENV_NEON)) {
+      abortar('falta backend/.env.demo.neon.local. Pedíselo en privado a los autores y ponelo en backend/.');
+    }
+    return ENV_NEON;
+  }
+  asegurarSecretoLocal();
   return ENV_LOCAL;
+}
+
+// JWT_SECRET del backend hijo, siempre definido por el lanzador (nunca lo completa backend/.env).
+// Prioridad: el del archivo del modo; si no, el de backend/.env.demo.local (se genera y guarda si falta).
+function jwtSecret(envArchivo) {
+  const propio = envArchivo.JWT_SECRET;
+  return typeof propio === 'string' && propio.trim() !== '' ? propio : asegurarSecretoLocal();
 }
 
 // Devuelve el hostname de una URL de base (sin credenciales) o aborta si no es válida.
@@ -125,5 +139,5 @@ function correr(cmd, args, { cwd = RAIZ, env = process.env } = {}) {
 
 module.exports = {
   RAIZ, BACKEND, ENV_LOCAL, ENV_NEON, HOST_PRODUCCION,
-  abortar, leerEnv, asegurarEnv, guardaBase, modoCorreo, entornoCorreo, VARS_CORREO, correr, preguntar,
+  abortar, leerEnv, asegurarEnv, jwtSecret, guardaBase, modoCorreo, entornoCorreo, VARS_CORREO, correr, preguntar,
 };

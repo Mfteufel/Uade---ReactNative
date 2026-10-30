@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { acceptMeetingPoint, getMeetingPoint, proposeMeetingPoint } from '../services/claimsApi';
+import { acceptMeetingPoint, confirmReturn, getMeetingPoint, proposeMeetingPoint } from '../services/claimsApi';
 import { getErrorMessage } from '../services/errors';
 
-// Punto de encuentro de un reclamo aceptado: ver, proponer, aceptar o sugerir otro lugar.
-// El servidor es la fuente de verdad: dice quién puede proponer o aceptar (canPropose / canAccept)
+// Punto de encuentro de un reclamo aceptado: ver, proponer, aceptar o sugerir otro lugar, y confirmar la devolución.
+// El servidor es la fuente de verdad: dice quién puede proponer, aceptar o confirmar (canPropose / canAccept / canConfirmReturn)
 // y, si algo cambió mientras la pantalla estaba abierta, el error se muestra y se vuelve a pedir el estado.
 export default function useMeetingPoint(claimId) {
   const [meeting, setMeeting] = useState(null);
@@ -69,10 +69,12 @@ export default function useMeetingPoint(claimId) {
 
   const onAccept = () => send(() => acceptMeetingPoint(meeting.meetingPoint.id));
 
+  const onConfirmReturn = () => send(() => confirmReturn(claimId));
+
   return {
     meeting, loading, error, load,
     address, setAddress, notes, setNotes, fieldError,
     showForm, openForm: () => setShowForm(true), closeForm: () => setShowForm(false),
-    sending, actionError, onPropose, onAccept,
+    sending, actionError, onPropose, onAccept, onConfirmReturn,
   };
 }

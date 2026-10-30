@@ -2,7 +2,7 @@ process.env.JWT_SECRET = 'x'.repeat(48);
 process.env.PUBLIC_URL = 'http://test.local:3000';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildPublicationInput, isValidPastDate, toOwnPublication } = require('../src/services/publishing');
+const { buildPublicationInput, isValidPastDate, toOwnPublication, normalizeMultiline } = require('../src/services/publishing');
 
 const UUID = '0f8fad5b-d9cb-469f-a165-70867728950e';
 const PHOTO = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
@@ -102,4 +102,18 @@ test('toOwnPublication arma URLs de fotos y números', () => {
   assert.equal(view.latitude, -34.58);
   assert.deepEqual(view.photoUrls, [`http://test.local:3000/photos/${PHOTO}`]);
   assert.equal(view.category.name, 'Llaves');
+});
+
+test('descripción: acepta saltos de línea, los normaliza y sigue rechazando otros caracteres de control', () => {
+  assert.equal(buildPublicationInput(lost({ description: 'uno\r\ndos\rtres' })).input.description, 'uno\ndos\ntres');
+  assert.equal(normalizeMultiline('  a  \n\n\n\n b \n'), 'a\n\nb');
+  assert.equal(buildPublicationInput(lost({ description: '\n \n' })).input.description, null);
+  assert.match(errorOf(lost({ description: 'a\tb' })).message, /no permitidos/);
+  assert.match(errorOf(lost({ description: 'a\u0000b' })).message, /no permitidos/);
+  // en los demás campos el salto de línea sigue prohibido
+  assert.match(errorOf(lost({ title: 'a\nb' })).message, /no permitidos/);
+  assert.match(errorOf(lost({ exactAddress: 'a\nb' })).message, /no permitidos/);
+  // el largo cuenta el texto normalizado: 500 caracteres con \r\n entran si ya normalizados caben
+  assert.equal(buildPublicationInput(lost({ description: `${'a'.repeat(249)}\r\n${'b'.repeat(250)}` })).error, undefined);
+  assert.match(errorOf(lost({ description: `${'a'.repeat(250)}\n${'b'.repeat(250)}` })).message, /500/);
 });

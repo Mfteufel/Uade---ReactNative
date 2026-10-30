@@ -10,6 +10,8 @@ const neighborhoodsRouter = require('./routes/neighborhoods');
 const categoriesRouter = require('./routes/categories');
 const searchRouter = require('./routes/search');
 const recentSearchesRouter = require('./routes/recentSearches');
+const historyRouter = require('./routes/history');
+const returnsRouter = require('./routes/returns');
 const publishingRouter = require('./routes/publishing');
 const publicationsRouter = require('./routes/publications');
 const followsRouter = require('./routes/follows');
@@ -55,6 +57,8 @@ app.use('/barrios', unauthLimiter, neighborhoodsRouter);
 app.use('/categorias', unauthLimiter, categoriesRouter);
 app.use('/publicaciones', searchRouter); // solo GET /; sus middlewares van en la ruta (ver routes/search.js)
 app.use('/busquedas-recientes', unauthLimiter, recentSearchesRouter);
+app.use('/historial', unauthLimiter, historyRouter);
+app.use('/devoluciones', unauthLimiter, returnsRouter);
 app.use('/publicaciones', publishingRouter); // sus middlewares van en cada ruta (ver routes/publishing.js)
 // Va último: si estuviera antes, '/:id' atraparía rutas fijas como /publicaciones/mias.
 app.use('/publicaciones', publicationsRouter);

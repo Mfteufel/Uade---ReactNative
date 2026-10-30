@@ -56,6 +56,10 @@ router.get('/:id/punto-encuentro', handle(async (req, res) => {
 router.post('/:id/punto-encuentro', handle(async (req, res) => {
   res.status(201).json(await meetings.proposeMeeting(req.user.id, validClaimId(req.params.id), req.body));
 }));
+// Quien recupera el objeto confirma la devolución (crea la fila en returns y resuelve la publicación).
+router.post('/:id/devolucion', handle(async (req, res) => {
+  res.status(201).json(await meetings.confirmReturn(req.user.id, validClaimId(req.params.id)));
+}));
 
 // /puntos-encuentro/*
 const meetingPointsRouter = Router();
