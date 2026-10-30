@@ -135,7 +135,7 @@ export default function MeetingPointScreen({ route }) {
         </View>
       ) : null}
       {point?.status === 'accepted' && meeting.iHaveTheObject && !meeting.completedReturn ? (
-        <Text style={styles.note}>Cuando {meeting.otherParty.name} reciba el objeto, confirma la devolución desde esta pantalla.</Text>
+        <Text style={styles.note}>Cuando {meeting.otherParty.name} reciba el objeto, va a confirmar la devolución desde esta pantalla.</Text>
       ) : null}
 
       {/* Sin punto vigente, quien tiene el objeto propone el primer lugar. */}

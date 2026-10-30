@@ -216,13 +216,13 @@ Todo lo siguiente existe hoy en la rama principal.
 - Proponer, aceptar o sugerir otro lugar necesita un reclamo aceptado que todavía no tenga lugar vigente, y los datos de ejemplo no traen uno. El reclamo pendiente de Diego tampoco sirve: en los datos de ejemplo su publicación ya figura "en reclamo", así que aceptarlo responde 409. Para probar ese flujo, creá un reclamo desde el detalle de una publicación (con una cuenta que no sea la del publicador, botón "Es mío" o "Lo encontré") y pedile al publicador que lo acepte desde "Mis reclamos"; el punto de encuentro se coordina desde el reclamo aceptado (ver [`API_CONTRACT.md`](API_CONTRACT.md), secciones "Reclamos" y "Punto de encuentro").
 - Quien tiene el objeto propone primero: el publicador si la publicación es de algo encontrado, o quien reclamó "Lo encontré" si es de algo perdido. La otra parte acepta el lugar o sugiere otro.
 - Con el lugar acordado, quien recupera el objeto confirma la devolución con "Ya recibí el objeto": se registra en `returns` (de ahí sale el historial) y la publicación pasa a "Resuelta". Quien lo entregó no puede confirmarla.
-- Las valoraciones y el historial todavía no están.
+- Las valoraciones y el historial están en el punto 10.
 
 **10. Historial y valoraciones**
 - Con `bruno.seed@hallado.com` o `carla.seed@hallado.com`: "Mi historial" (desde la pantalla principal), pestañas "Devolví" / "Recuperé", y filtros de fecha, tipo (perdido / encontrado) y categoría.
 - Valorar y agradecer: solo dentro de los 7 días desde la devolución. La devolución de los datos de ejemplo puede estar vencida; los autores la refrescan con `db:refrescar-fechas`.
 - El agradecimiento se ve en el perfil público de quien devolvió, abajo de las insignias.
-- Las devoluciones nuevas salen del punto 8 ("Ya recibí el objeto"), que está en el PR #15.
+- Las devoluciones nuevas salen del punto 8 ("Ya recibí el objeto"): al confirmarla se habilitan las valoraciones y el agradecimiento durante 7 días.
 
 ## Estado de la entrega
 
