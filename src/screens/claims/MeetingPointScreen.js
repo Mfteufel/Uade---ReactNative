@@ -76,6 +76,13 @@ export default function MeetingPointScreen({ route }) {
       { text: 'Aceptar', onPress: form.onAccept },
     ]);
 
+  // Confirmar la devolución cierra la publicación y no se puede deshacer, así que también se pide confirmación.
+  const confirmReturn = () =>
+    Alert.alert('Confirmar devolución', 'Se registra la devolución y la publicación queda resuelta. No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Ya lo recibí', onPress: form.onConfirmReturn },
+    ]);
+
   return (
     <FormScreen title="Punto de encuentro" subtitle="Coordinen dónde entregar el objeto." error={error || actionError}>
       {point ? (
@@ -111,6 +118,19 @@ export default function MeetingPointScreen({ route }) {
             <Button variant="link" title="Proponer otro lugar" disabled={sending} onPress={form.openForm} />
           )}
         </View>
+      ) : null}
+
+      {/* La devolución la confirma quien recupera el objeto; el servidor dice si esta persona puede hacerlo ahora. */}
+      {meeting.completedReturn ? (
+        <Field label="Devolución confirmada" value={formatDateTime(meeting.completedReturn.createdAt)} />
+      ) : null}
+      {meeting.canConfirmReturn ? (
+        <View style={styles.actions}>
+          <Button title="Ya recibí el objeto" loading={sending} onPress={confirmReturn} />
+        </View>
+      ) : null}
+      {point?.status === 'accepted' && meeting.iHaveTheObject && !meeting.completedReturn ? (
+        <Text style={styles.note}>Cuando {meeting.otherParty.name} reciba el objeto, confirma la devolución desde esta pantalla.</Text>
       ) : null}
 
       {/* Sin punto vigente, quien tiene el objeto propone el primer lugar. */}

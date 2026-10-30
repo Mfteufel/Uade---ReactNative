@@ -46,8 +46,8 @@ Cuando se supera un límite: `429` con
 | `POST /users/me/photo` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
 | `POST /publicaciones/fotos` | 30 subidas / hora (cuenta también las fallidas) | Usuario |
 | `GET /photos/:id` | 1000 pedidos / 15 min | IP |
-| Todo `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*` y `/barrios` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
-| `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*` y `/barrios` sin token válido | 100 respuestas 401 / 15 min | IP |
+| Todo `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
+| `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /reclamos/foto` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
 | `GET /publicaciones/:id` y todo `/seguidas/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
 | `GET /publicaciones/:id` y `/seguidas/*` sin token válido | 100 respuestas 401 / 15 min | IP |
@@ -304,9 +304,20 @@ Perfil visible para otras personas. **No incluye** email, teléfono, barrio ni h
   "name": "Lucía Fernández",
   "photoUri": "http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90",
   "memberSince": "2024-03-10T12:00:00.000Z",
-  "reputation": { /* Reputation */ }
+  "reputation": { /* Reputation */ },
+  "thanks": [
+    {
+      "message": "¡Gracias por devolverme el celular!",
+      "createdAt": "2026-10-27T20:00:00.000Z",
+      "author": { "name": "Bruno Seed", "photoUri": null }
+    }
+  ]
 }
 ```
+- `thanks` (punto 10): agradecimientos públicos que recibió por devolver objetos (`POST /devoluciones/:id/agradecimiento`).
+  Los **últimos 20**, del más nuevo al más viejo; `[]` si no tiene. Cada item trae **solo** `message`, `createdAt` (ISO) y
+  `author` (`name`, `photoUri` o `null`). No trae ids, mails, teléfonos ni datos del objeto o de la devolución.
+- Si quien agradeció borra su cuenta, su agradecimiento se borra con ella (`thanks.author_id` es `ON DELETE CASCADE`) y deja de aparecer.
 
 Errores: 404 `Usuario no encontrado.` (también si el `:id` tiene formato inválido).
 
@@ -458,7 +469,9 @@ Reglas (las aplica el servidor; la app solo las muestra):
 - Con una propuesta `proposed`, **responde la parte que NO propuso**: la acepta o sugiere otro lugar. Quien propuso no puede aceptar su propia propuesta ni proponer de nuevo.
 - Una sugerencia pasa la propuesta vigente a `counter_proposed` (con `responded_at`) e inserta la nueva con `replaces_id` apuntando a ella, en una sola transacción.
   Hay un solo punto vigente (`proposed` o `accepted`) por reclamo; el reclamo se bloquea (`FOR UPDATE`) para que dos pedidos simultáneos se atiendan de a uno.
-- **Un punto `accepted` es definitivo** (decisión del equipo: el TPO solo pide aceptar o sugerir otro sobre una propuesta). No cambia el estado del reclamo ni de la publicación.
+- **Un punto `accepted` es definitivo** (decisión del equipo: el TPO solo pide aceptar o sugerir otro sobre una propuesta). Acordar el lugar no cambia el estado del reclamo ni de la publicación.
+- **La devolución la confirma quien recupera el objeto** (la otra parte de quien lo tiene), con el punto ya `accepted`. Ver `POST /reclamos/:id/devolucion`.
+  No la confirma quien devuelve porque `returns.user_id` suma puntos de reputación a quien devolvió.
 - Se guarda `address` (obligatoria, máx. 200) y `notes` (opcional, máx. 280). No se usa `meet_at` ni se cargan coordenadas (no hay geocodificación ni agenda).
   "Cómo llegar" lo resuelve la app con la dirección, abriendo Google Maps fuera de Hallado.
 
@@ -476,9 +489,13 @@ Reglas (las aplica el servidor; la app solo las muestra):
   },
   "canPropose": true,
   "canAccept": true,
-  "reason": null
+  "reason": null,
+  "completedReturn": null,
+  "canConfirmReturn": false
 }
 ```
+- `completedReturn` es `null` hasta que se confirma la devolución; después es `{ "id": 42, "createdAt": "2026-10-26T09:00:00.000Z" }`. El `id` es el de la fila de `returns`, como número.
+- `canConfirmReturn` es `true` solo para quien recupera el objeto, con el punto `accepted` y sin devolución previa.
 - `meetingPoint` es `null` si todavía no hay ninguna propuesta vigente.
 - `canPropose` / `canAccept` dicen qué puede hacer **quien consulta** ahora; si ninguna es `true`, `reason` explica por qué (espera, ya acordado o no le corresponde).
 - `latitude` / `longitude` solo vienen si el punto las tiene cargadas (por ejemplo, datos del seed); si no, `null`.
@@ -504,6 +521,26 @@ Errores:
 - 403 `No podés aceptar tu propia propuesta: responde la otra persona.`
 - 404 `Punto de encuentro no encontrado.` (también si no es parte del reclamo)
 - 409 `El punto de encuentro ya fue acordado.` / `Esta propuesta fue reemplazada por otra. Actualizá la pantalla.` / `La coordinación del encuentro se habilita cuando el reclamo está aceptado.`
+
+### POST `/reclamos/:id/devolucion`
+Sin body. Quien recupera el objeto confirma que la devolución se concretó. 201: `MeetingView` con `completedReturn` completo.
+
+El servidor, en una sola transacción (bloquea primero la publicación y después el reclamo):
+1. Inserta una fila en `returns`. Todos los valores salen del reclamo, no del pedido:
+   - `user_id` = quien devolvió, o sea quien tenía el objeto (el publicador si la publicación es `found`; el solicitante si es `lost`).
+   - `recovered_by_id` = quien lo recuperó (la otra parte, que es quien llama).
+   - `claim_id` = el reclamo.
+   - `meeting_point_id` = el punto de encuentro `accepted` vigente.
+   - `created_at` = la hora del servidor al confirmar.
+2. Pasa la publicación a `resolved` y actualiza su `status_changed_at`.
+
+El reclamo sigue `accepted` (no hay estado nuevo). Hay una sola devolución por reclamo (`UNIQUE (claim_id)`).
+Con la devolución registrada se puede valorar durante 7 días (punto 10) y suma a `completedReturns` de `user_id`.
+
+Errores:
+- 403 `La devolución la confirma quien recupera el objeto.`
+- 404 `Reclamo no encontrado.` (también si no es parte)
+- 409 `La coordinación del encuentro se habilita cuando el reclamo está aceptado.` / `Primero tienen que acordar el punto de encuentro.` / `La devolución ya fue confirmada.`
 
 ---
 
@@ -623,6 +660,133 @@ y `La categoría no existe.` / `El barrio no existe.`
 Borra una búsqueda reciente **propia**.
 
 204 sin cuerpo. Errores: 404 `Búsqueda no encontrada.` (no existe, el id no es válido o es de otra persona; no se distingue).
+
+---
+
+## Historial (punto 10)
+
+### GET `/historial`
+Las devoluciones del usuario del token, de la más nueva a la más vieja. Sale de la tabla `returns`
+(solo las que tienen `claim_id` y `recovered_by_id`, ver abajo):
+`devolvi` = `returns.user_id` es el usuario; `recupere` = `returns.recovered_by_id` es el usuario. Solo lectura.
+
+Query string (todos opcionales):
+
+| Parámetro | Valores |
+|---|---|
+| `rol` | `devolvi` \| `recupere`. Sin `rol` vienen las dos |
+| `desde`, `hasta` | `AAAA-MM-DD`, ambos extremos incluidos, por separado. Se aplican a la fecha de la devolución (día de Buenos Aires). Si van los dos, `desde` ≤ `hasta` |
+| `tipo` | `lost` \| `found`. Filtra por el tipo de la publicación (perdido / encontrado), igual que `tipo` en `/publicaciones`. Otro valor → `422 El tipo no es válido.` |
+| `categoria` | id de `/categorias`. Filtra por la categoría de la publicación |
+| `pagina` | entero desde 1 (máx. 1000). Por defecto 1 |
+| `limite` | entero de 1 a 50. Por defecto 20 |
+
+Respuesta `200`:
+```json
+{
+  "items": [
+    {
+      "id": 60,
+      "role": "devolvi",
+      "date": "2026-10-22T17:42:15.846Z",
+      "object": { "title": "Celular Samsung azul", "type": "found", "category": { "id": "electronics", "name": "Electrónica" } },
+      "counterpart": { "id": "u_seed_bruno", "name": "Bruno Seed", "photoUri": null },
+      "canRate": true,
+      "myRating": null,
+      "canThank": false,
+      "thanked": true
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "hasMore": false
+}
+```
+- `id`: id de la devolución (**número**; es el `:id` de `POST /devoluciones/:id/...`). `role`: `devolvi` \| `recupere`. `date`: `returns.created_at` en ISO.
+- `object`: título, tipo (`type`: `lost` \| `found`) y categoría de la publicación (`returns.claim_id` → `claims` → `publications`). `null` si la devolución no tiene reclamo.
+- `counterpart`: la otra persona (`id`, `name`, `photoUri` o `null`). **Nunca** trae teléfono ni email. `null` si la devolución no tiene `recovered_by_id`.
+- `canRate` (para `POST /devoluciones/:id/valoraciones`): `true` si hay contraparte, pasaron **7 días o menos** desde `date` (el borde es inclusivo) y todavía no valoré esa devolución.
+- `myRating`: `{ "positive": true|false, "comment": string|null }` si ya valoré; si no, `null`.
+- `canThank` (para `POST /devoluciones/:id/agradecimiento`): `true` solo si `role` es `recupere`, dentro de los mismos 7 días y sin agradecimiento previo (hay uno por devolución).
+- `thanked`: `true` si la devolución ya tiene agradecimiento (de quien recuperó).
+- **No se listan** las devoluciones sin `claim_id` o sin `recovered_by_id` (datos viejos, anteriores a la migración 007, sin objeto ni contraparte).
+  Por eso la cantidad del historial puede ser menor que `completedReturns` de la reputación.
+- `object` o `counterpart` solo pueden venir en `null` si se borró la publicación o la cuenta de la otra persona (no se inventa ningún dato).
+- El plazo de 7 días lo informan `canRate` y `canThank`; los POST de valoración y de agradecimiento aplican la misma regla.
+
+Errores: `401` sin token. `422` (`message` en español) por `rol` distinto de `devolvi`/`recupere`, fechas con otro formato o `desde` posterior a `hasta`, categoría inválida, página o límite fuera de rango.
+Rate limit: el mismo contador que `/users/*` (300 pedidos / 15 min por usuario; 100 respuestas 401 / 15 min por IP).
+
+### POST `/devoluciones/:id/valoraciones`
+Valora a la otra parte de una devolución. Requiere token. `:id` es el `id` de un item de `/historial`.
+
+Body:
+```json
+{ "positive": true, "comment": "Muy amable y puntual" }
+```
+- `positive`: obligatorio, `true` (positiva) o `false` (negativa).
+- `comment`: opcional. Se recortan los espacios; máximo 280 caracteres; sin caracteres de control (tampoco saltos de línea).
+  Si queda vacío se guarda `null`.
+
+Reglas, en este orden:
+1. `:id` inválido o la devolución no existe → `404 Devolución no encontrada.`
+2. Quien pide no es parte (ni quien devolvió ni quien recuperó) → el mismo `404`, sin revelar que existe.
+3. La devolución no tiene quien recuperó → `422 Esta devolución no tiene a quién valorar.`
+4. Pasaron más de 7 días desde la devolución (borde inclusivo: a los 7 días exactos todavía se puede) →
+   `422 El plazo para valorar venció (7 días desde la devolución).` Es el mismo plazo que informa `canRate` en `/historial`.
+5. Ya valoró esa devolución → `409 Ya valoraste esta devolución.` (también si llegan dos pedidos a la vez).
+
+El body se valida antes de buscar la devolución (`422` con el mensaje del campo); eso no revela si la devolución existe.
+Se valora a la otra parte: quien devolvió valora a quien recuperó y viceversa.
+
+Respuesta `201`:
+```json
+{
+  "id": 7,
+  "returnId": 60,
+  "ratedUserId": "u_seed_bruno",
+  "positive": true,
+  "comment": "Muy amable y puntual",
+  "createdAt": "2026-10-28T14:00:00.000Z"
+}
+```
+- La valoración se suma sola a `GET /users/:id/reputation` de la persona valorada (positivas, negativas, puntos y porcentaje).
+- Errores además de los de arriba: `401` sin token. Rate limit: el mismo que `/historial`.
+
+### POST `/devoluciones/:id/agradecimiento`
+Agradecimiento público de quien recuperó el objeto a quien se lo devolvió. Requiere token. `:id` es el `id` de un item de `/historial`.
+Hay **uno solo por devolución**.
+
+Body:
+```json
+{ "message": "¡Gracias por devolverme el celular!" }
+```
+- `message`: obligatorio. Se recortan los espacios; de 1 a 500 caracteres; misma regla de caracteres que el comentario de la valoración
+  (sin caracteres de control ni saltos de línea).
+
+Reglas, en este orden:
+1. El body se valida antes de buscar la devolución (`422` con el mensaje del campo).
+2. `:id` inválido, la devolución no existe o quien pide no es parte → `404 Devolución no encontrada.`
+3. Quien pide es parte pero no es quien recuperó → `403 Solo quien recuperó el objeto puede agradecer.`
+   (Una devolución sin quien recuperó cae acá: quien devolvió recibe este `403`.)
+4. Pasaron más de 7 días desde la devolución (borde inclusivo) → `422 El plazo para agradecer venció (7 días desde la devolución).`
+   Es el mismo plazo que informa `canThank` en `/historial`.
+5. Ya hay un agradecimiento para esa devolución → `409 Ya agradeciste esta devolución.` (también si llegan dos pedidos a la vez).
+
+Se guarda con `author_id` = quien recuperó y `recipient_id` = quien devolvió.
+
+Respuesta `201`:
+```json
+{
+  "id": "b1f0c2d4-0000-4000-8000-000000000001",
+  "returnId": 60,
+  "recipientId": "u_seed_carla",
+  "message": "¡Gracias por devolverme el celular!",
+  "createdAt": "2026-10-28T14:00:00.000Z"
+}
+```
+- `id` es un UUID. Se muestra en el perfil público de quien devolvió (`thanks` de `GET /users/:id/public`).
+- Errores además de los de arriba: `401` sin token. Rate limit: el mismo que `/historial`.
 
 ---
 
@@ -814,7 +978,7 @@ Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` 
 ## Pendiente para el backend (todavía no implementado)
 
 - **Reclamos (punto 7)**: implementados, ver la sección "Reclamos". El teléfono de la otra parte ya lo decide el servidor en `Claim.otherParty.phone`.
-  Pendiente de otros puntos: el punto de encuentro (punto 8) ya tiene sus rutas (ver "Punto de encuentro"); queda fuera la confirmación de la devolución (`returns`).
+  Pendiente de otros puntos: el punto de encuentro (punto 8) ya tiene sus rutas y la confirmación de la devolución, que llena `returns` (ver "Punto de encuentro").
 - **Esquema de base ya creado, API pendiente**: las migraciones 004 a 008 (probadas solo en una rama de pruebas, no en producción)
   fijan estos estados exactos. Publicaciones: `open`, `in_claim`, `resolved`, `expired`. Reclamos: `pending`, `accepted`, `rejected`, `expired`
   (sin `cancelled`). Puntos de encuentro: `proposed`, `accepted`, `counter_proposed`. Tipos: publicación `lost`/`found`; reclamo `mine`/`found`.
@@ -823,7 +987,7 @@ Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` 
   es una de las dos partes; se puede valorar hasta 7 días después de la devolución; el reclamo vence a las 48 h y la publicación a los 30 días
   (lo fija el endpoint); `verification_answer` y `exact_address` son privadas; `client_id` lo genera la app (idempotencia offline).
 - **Seguidas**: la novedad es `publications.status_changed_at > follows.seen_at`.
-- **Historial de devoluciones**: hoy `completedReturns` es solo un contador.
+- **Historial de devoluciones**: `GET /historial` ya existe (ver arriba). `POST /devoluciones/:id/valoraciones` y `POST /devoluciones/:id/agradecimiento` también. Falta mostrar los agradecimientos en el perfil público.
 
 ## Datos de ejemplo (seed)
 

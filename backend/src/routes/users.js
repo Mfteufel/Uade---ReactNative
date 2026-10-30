@@ -50,7 +50,7 @@ function validId(id) {
 
 router.get('/:id/public', async (req, res, next) => {
   try {
-    res.json(await getPublicProfile(validId(req.params.id)));
+    res.json(await getPublicProfile(validId(req.params.id), { withThanks: true }));
   } catch (e) {
     next(e);
   }

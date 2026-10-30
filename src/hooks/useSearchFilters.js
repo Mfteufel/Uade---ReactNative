@@ -3,9 +3,9 @@ import * as Location from 'expo-location';
 import { getCategoriesCached, getNeighborhoodsCached } from '../services/catalogApi';
 import { getErrorMessage } from '../services/errors';
 import { DEFAULT_RADIUS } from '../constants/search';
+import { dayRangeError } from '../utils/searchCriteria';
 
 const MAX_SUGGESTIONS = 8;
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const EMPTY = {
   situacion: null, // 'perdi' | 'encontre'
@@ -94,10 +94,7 @@ export default function useSearchFilters(initial = {}) {
   // Devuelve el texto del problema o '' si los criterios sirven para buscar.
   const validate = ({ needSituation = true } = {}) => {
     if (needSituation && !values.situacion) return 'Contanos qué te pasó: perdiste o encontraste algo.';
-    if (values.periodo === 'rango') {
-      if (!DAY_RE.test(values.desde) || !DAY_RE.test(values.hasta)) return 'Las fechas se escriben así: AAAA-MM-DD (ej. 2026-10-24).';
-      if (values.desde > values.hasta) return 'La fecha "desde" no puede ser posterior a "hasta".';
-    }
+    if (values.periodo === 'rango') return dayRangeError(values.desde, values.hasta);
     return '';
   };
 
