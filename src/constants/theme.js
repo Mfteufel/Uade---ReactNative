@@ -7,6 +7,7 @@ export const colors = {
   border: '#D1D5DB',
   error: '#C62828',
   warning: '#B26A00',
+  warningBackground: '#FFF4E0', // fondo de los avisos amarillos
   splash: '#F2F2F0', // fondo del ícono y de la pantalla de carga
 };
 

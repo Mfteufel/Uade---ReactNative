@@ -51,8 +51,8 @@ export default function PublishScreen({ navigation, route }) {
   return (
     <FormScreen title={STEP_TITLES[stepName]} subtitle={`Paso ${draft.step + 1} de ${steps.length}`} error={form.formError}>
       {form.restored ? (
-        <View style={styles.restored}>
-          <Text style={styles.restoredText}>Seguís con el borrador que habías dejado sin publicar.</Text>
+        <View style={styles.draftNotice}>
+          <Text style={styles.draftNoticeText}>Seguís con el borrador que habías dejado sin publicar.</Text>
           <Button variant="link" title="Descartarlo y empezar de nuevo" onPress={form.discardDraft} />
         </View>
       ) : null}
@@ -268,5 +268,8 @@ const styles = StyleSheet.create({
   location: { marginBottom: spacing.sm },
   restored: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
   restoredText: { color: colors.text },
+  // Mismo amarillo que los avisos sin conexión, para que se note al entrar.
+  draftNotice: { backgroundColor: colors.warningBackground, borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
+  draftNoticeText: { color: colors.warning },
   errorText: { color: colors.error },
 });

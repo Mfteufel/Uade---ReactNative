@@ -11,6 +11,6 @@ export default function OfflineNotice({ text }) {
 }
 
 const styles = StyleSheet.create({
-  box: { backgroundColor: '#FFF4E0', borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
+  box: { backgroundColor: colors.warningBackground, borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
   text: { color: colors.warning },
 });

@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Button from './Button';
 import { PUBLICATION_STATUS } from '../constants/publications';
 import { colors, spacing } from '../constants/theme';
@@ -9,7 +9,8 @@ const RENEW_WARNING_DAYS = 7;
 
 // Tarjeta de "Mis publicaciones". Se puede renovar si venció o si le quedan pocos días.
 // Las pendientes de envío todavía no vencen; si el servidor las rechazó, se pueden descartar.
-export default function MyPublicationCard({ publication, onRenew, renewing, onDiscard, offline }) {
+// Al tocarla se abre el detalle (las pendientes no, porque todavía no existen en el servidor).
+export default function MyPublicationCard({ publication, onPress, onRenew, renewing, onDiscard, offline }) {
   const status = PUBLICATION_STATUS[publication.status] || { label: publication.status, color: colors.muted };
   const isPending = publication.status === 'pending';
   const daysLeft = daysUntil(publication.expiresAt);
@@ -18,7 +19,11 @@ export default function MyPublicationCard({ publication, onRenew, renewing, onDi
   const photo = publication.photoUrls?.[0];
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      onPress={isPending ? undefined : () => onPress(publication.id)}
+      disabled={isPending}
+    >
       <View style={styles.row}>
         {photo ? <Image source={{ uri: photo }} style={styles.photo} /> : <View style={[styles.photo, styles.noPhoto]} />}
         <View style={styles.info}>
@@ -51,12 +56,13 @@ export default function MyPublicationCard({ publication, onRenew, renewing, onDi
           dimmed={offline}
         />
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
+  pressed: { opacity: 0.7 },
   row: { flexDirection: 'row', gap: spacing.md },
   photo: { width: 72, height: 72, borderRadius: 8 },
   noPhoto: { backgroundColor: colors.border },
