@@ -14,6 +14,7 @@ export const PUBLICATION_STATUS = {
   in_claim: { label: 'En reclamo', color: pub.in_claim.fg, bg: pub.in_claim.bg },
   resolved: { label: 'Resuelta', color: pub.resolved.fg, bg: pub.resolved.bg },
   expired: { label: 'Vencida', color: pub.expired.fg, bg: pub.expired.bg },
+  pending: { label: 'Pendiente de envío', color: pub.pending.fg, bg: pub.pending.bg }, // aún sin dato (modo sin conexión)
 };
 
 // Franjas horarias del suceso. La API guarda desde/hasta; la app solo ofrece estas opciones.
