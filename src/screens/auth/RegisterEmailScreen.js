@@ -1,11 +1,15 @@
 import { useState } from 'react';
+import { StyleSheet } from 'react-native';
 import FormScreen from '../../components/FormScreen';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
+import Banner from '../../components/Banner';
+import BottomActionBar from '../../components/BottomActionBar';
 import { requestRegisterOtp } from '../../services/authApi';
 import { getErrorMessage } from '../../services/errors';
 import { validateEmail } from '../../utils/validators';
 import { showDevOtp } from '../../utils/devOtp';
+import { spacing } from '../../constants/theme';
 
 export default function RegisterEmailScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -32,7 +36,16 @@ export default function RegisterEmailScreen({ navigation }) {
   };
 
   return (
-    <FormScreen title="Crear cuenta" subtitle="Paso 1 de 3: ingresá tu email. Te enviamos un código." error={formError}>
+    <FormScreen
+      title="Crear cuenta"
+      subtitle="Paso 1 de 3: ingresá tu email. Te enviamos un código."
+      footer={
+        <BottomActionBar>
+          <Button title="Enviar código" loadingTitle="Enviando…" onPress={onSubmit} loading={loading} />
+        </BottomActionBar>
+      }
+    >
+      {formError ? <Banner kind="warn" message={formError} style={styles.banner} /> : null}
       <Input
         label="Email"
         value={email}
@@ -43,7 +56,10 @@ export default function RegisterEmailScreen({ navigation }) {
         autoCorrect={false}
         placeholder="tu@email.com"
       />
-      <Button title="Enviar código" onPress={onSubmit} loading={loading} />
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  banner: { marginBottom: spacing.md },
+});

@@ -61,7 +61,8 @@ export default function AppNavigator() {
           </>
         ) : (
           <>
-            <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Ingresar' }} />
+            {/* Ingreso: sin encabezado azul, la marca hace de título (LoginScreen reserva la barra de estado). */}
+            <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Ingresar', headerShown: false }} />
             <Stack.Screen name="RegisterEmail" component={RegisterEmailScreen} options={{ title: 'Registro' }} />
             <Stack.Screen name="RegisterOtp" component={RegisterOtpScreen} options={{ title: 'Código' }} />
             <Stack.Screen name="RegisterPassword" component={RegisterPasswordScreen} options={{ title: 'Contraseña' }} />
