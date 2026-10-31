@@ -1,7 +1,10 @@
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
+import Banner from '../../components/Banner';
+import BottomActionBar from '../../components/BottomActionBar';
 import Button from '../../components/Button';
+import EmptyState from '../../components/EmptyState';
 import MyPublicationCard from '../../components/MyPublicationCard';
-import OfflineNotice from '../../components/OfflineNotice';
+import SkeletonCard from '../../components/SkeletonCard';
 import useMyPublications from '../../hooks/useMyPublications';
 import { colors, spacing } from '../../constants/theme';
 
@@ -17,15 +20,20 @@ export default function MyPublicationsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Aviso sin conexión pegado al encabezado, a todo el ancho. */}
+      {offlineText ? <Banner kind="offline" message={offlineText} /> : null}
+
       {error ? (
         <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Banner kind="warn" message={error} />
           <Button variant="link" title="Reintentar" onPress={refresh} loading={loading} />
         </View>
       ) : null}
 
       {loading && publications.length === 0 && !error ? (
-        <ActivityIndicator style={styles.center} size="large" />
+        <View style={styles.list}>
+          <SkeletonCard count={3} />
+        </View>
       ) : (
         <FlatList
           data={publications}
@@ -44,26 +52,26 @@ export default function MyPublicationsScreen({ navigation }) {
           refreshing={loading}
           onRefresh={refresh}
           ListEmptyComponent={
-            error || (offlineCopy && !offlineCopy.savedAt) ? null : <Text style={styles.empty}>Todavía no publicaste nada.</Text>
-          }
-          ListHeaderComponent={
-            <View style={styles.header}>
-              {offlineText ? <OfflineNotice text={offlineText} /> : null}
-              <Button title="Nueva publicación" onPress={() => navigation.navigate('Publish')} />
-            </View>
+            error || (offlineCopy && !offlineCopy.savedAt) ? null : (
+              <EmptyState
+                icon="list"
+                title="Todavía no publicaste nada."
+                message="Cuando publiques algo que perdiste o encontraste, va a aparecer acá."
+              />
+            )
           }
         />
       )}
+
+      <BottomActionBar>
+        <Button title="Nueva publicación" onPress={() => navigation.navigate('Publish')} />
+      </BottomActionBar>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1 },
-  list: { padding: spacing.lg },
-  header: { marginBottom: spacing.lg },
-  empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.lg },
-  errorBox: { backgroundColor: '#FDECEA', borderRadius: 8, padding: spacing.md, margin: spacing.lg, marginBottom: 0 },
-  errorText: { color: colors.error },
+  container: { flex: 1, backgroundColor: colors.surface },
+  list: { padding: spacing.screen },
+  errorBox: { margin: spacing.screen, marginBottom: 0 },
 });

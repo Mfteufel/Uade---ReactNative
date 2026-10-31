@@ -1,7 +1,10 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Button from './Button';
+import Card from './Card';
+import Icon from './Icon';
+import StateTag from './StateTag';
 import { PUBLICATION_STATUS } from '../constants/publications';
-import { colors, spacing } from '../constants/theme';
+import { colors, radius, spacing, typography } from '../constants/theme';
 import { daysUntil, formatApiDate, formatShortDate } from '../utils/dates';
 import { showOfflineToast } from '../utils/offlineToast';
 
@@ -10,36 +13,67 @@ const RENEW_WARNING_DAYS = 7;
 // Tarjeta de "Mis publicaciones". Se puede renovar si venció o si le quedan pocos días.
 // Las pendientes de envío todavía no vencen; si el servidor las rechazó, se pueden descartar.
 // Al tocarla se abre el detalle (las pendientes no, porque todavía no existen en el servidor).
+// La zona tocable es la fila con la foto y el texto; los botones van debajo, fuera de ella.
 export default function MyPublicationCard({ publication, onPress, onRenew, renewing, onDiscard, offline }) {
-  const status = PUBLICATION_STATUS[publication.status] || { label: publication.status, color: colors.muted };
+  const status = PUBLICATION_STATUS[publication.status] || { label: publication.status, color: colors.textDim, bg: colors.surface };
   const isPending = publication.status === 'pending';
   const daysLeft = daysUntil(publication.expiresAt);
   const isActive = publication.status === 'open' || publication.status === 'in_claim';
   const canRenew = publication.status === 'expired' || (isActive && daysLeft <= RENEW_WARNING_DAYS);
   const photo = publication.photoUrls?.[0];
 
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-      onPress={isPending ? undefined : () => onPress(publication.id)}
-      disabled={isPending}
-    >
-      <View style={styles.row}>
-        {photo ? <Image source={{ uri: photo }} style={styles.photo} /> : <View style={[styles.photo, styles.noPhoto]} />}
-        <View style={styles.info}>
-          <Text style={styles.title} numberOfLines={2}>{publication.title}</Text>
-          <Text style={styles.meta}>
-            {publication.type === 'lost' ? 'Perdido' : 'Encontrado'} · {publication.category.name} · {publication.neighborhood.name}
-          </Text>
-          <Text style={styles.meta}>Pasó el {formatApiDate(publication.occurredOn)}</Text>
-          <Text style={[styles.status, { color: status.color }]}>{status.label}</Text>
-          {isActive ? (
-            <Text style={styles.meta}>Vence el {formatShortDate(publication.expiresAt)}</Text>
-          ) : null}
+  // Vencimiento a 30 días, escrito (las resueltas y las pendientes no lo muestran).
+  let expiryText = '';
+  if (isActive) expiryText = `Vence el ${formatShortDate(publication.expiresAt)}`;
+  else if (publication.status === 'expired') expiryText = `Venció el ${formatShortDate(publication.expiresAt)}`;
+
+  const typeName = publication.type === 'lost' ? 'Perdido' : 'Encontrado';
+  const label = [publication.title, publication.neighborhood.name, `Estado: ${status.label}`, expiryText]
+    .filter(Boolean)
+    .join('. ');
+
+  const content = (
+    <>
+      {photo ? (
+        <Image source={{ uri: photo }} style={styles.thumb} accessibilityIgnoresInvertColors />
+      ) : (
+        <View style={[styles.thumb, styles.noPhoto]}>
+          <Icon name="image" size={32} color={colors.textDim} />
+        </View>
+      )}
+      <View style={styles.info}>
+        <Text style={styles.title} numberOfLines={2}>{publication.title}</Text>
+        <Text style={styles.meta} numberOfLines={1}>
+          {typeName} · {publication.category.name} · {publication.neighborhood.name}
+        </Text>
+        <Text style={styles.meta} numberOfLines={1}>Pasó el {formatApiDate(publication.occurredOn)}</Text>
+        {expiryText ? <Text style={styles.meta} numberOfLines={1}>{expiryText}</Text> : null}
+        <View style={styles.tag}>
+          <StateTag label={status.label} fg={status.color} bg={status.bg} />
         </View>
       </View>
+    </>
+  );
+
+  return (
+    <Card tight style={styles.card}>
+      {isPending ? (
+        <View style={styles.row} accessible accessibilityLabel={label}>
+          {content}
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => onPress(publication.id)}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          android_ripple={{ color: colors.blue50 }}
+          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        >
+          {content}
+        </Pressable>
+      )}
       {isPending && !publication.error ? (
-        <Text style={styles.meta}>Se va a enviar sola cuando haya conexión.</Text>
+        <Text style={styles.note}>Se va a enviar sola cuando haya conexión.</Text>
       ) : null}
       {isPending && publication.error ? (
         <>
@@ -48,27 +82,32 @@ export default function MyPublicationCard({ publication, onPress, onRenew, renew
         </>
       ) : null}
       {canRenew ? (
-        <Button
-          variant="link"
-          title="Renovar 30 días"
-          onPress={() => (offline ? showOfflineToast() : onRenew(publication.id))}
-          loading={renewing}
-          dimmed={offline}
-        />
+        <View style={styles.action}>
+          <Button
+            variant="secondary"
+            title="Renovar 30 días"
+            loadingTitle="Renovando…"
+            onPress={() => (offline ? showOfflineToast() : onRenew(publication.id))}
+            loading={renewing}
+            dimmed={offline}
+          />
+        </View>
       ) : null}
-    </Pressable>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md, marginBottom: spacing.md },
-  pressed: { opacity: 0.7 },
-  row: { flexDirection: 'row', gap: spacing.md },
-  photo: { width: 72, height: 72, borderRadius: 8 },
-  noPhoto: { backgroundColor: colors.border },
-  info: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '700', color: colors.text },
-  meta: { color: colors.muted, marginTop: 2 },
-  status: { fontWeight: '700', marginTop: spacing.xs },
-  error: { color: colors.error, marginTop: spacing.xs },
+  card: { marginBottom: spacing.ms },
+  row: { flexDirection: 'row', minHeight: 88, borderRadius: radius.card },
+  pressed: { backgroundColor: colors.blue50 },
+  thumb: { width: 88, height: 88, borderRadius: radius.thumb, backgroundColor: colors.neutral200 },
+  noPhoto: { alignItems: 'center', justifyContent: 'center' },
+  info: { flex: 1, marginLeft: spacing.ms },
+  title: { ...typography.bodyStrong, color: colors.text },
+  meta: { ...typography.meta, color: colors.textDim },
+  tag: { marginTop: spacing.xs },
+  note: { ...typography.meta, color: colors.textDim, marginTop: spacing.sm },
+  error: { ...typography.body, color: colors.error, marginTop: spacing.sm },
+  action: { marginTop: spacing.ms },
 });
