@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Avatar from '../../components/Avatar';
+import Banner from '../../components/Banner';
 import BadgeList from '../../components/BadgeList';
 import Button from '../../components/Button';
+import Card from '../../components/Card';
 import ReputationCard from '../../components/ReputationCard';
 import ThanksList from '../../components/ThanksList';
 import { getPublicProfile } from '../../services/userApi';
 import { getErrorMessage } from '../../services/errors';
 import { formatMemberSince } from '../../utils/memberSince';
-import { colors, spacing } from '../../constants/theme';
+import { colors, spacing, typography } from '../../constants/theme';
 
 // Lo que ve otra persona: nombre, foto, reputación, insignias y antigüedad.
 // No muestra teléfono ni historial (la API pública tampoco los devuelve).
@@ -34,37 +36,49 @@ export default function PublicProfileScreen({ route }) {
     load();
   }, [load]);
 
-  if (loading) return <ActivityIndicator style={styles.center} size="large" />;
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.blue600} accessibilityLabel="Cargando el perfil" />
+      </View>
+    );
+  }
 
   if (error) {
     return (
       <View style={[styles.center, styles.errorBox]}>
-        <Text style={styles.errorText}>{error}</Text>
-        <Button variant="link" title="Reintentar" onPress={load} />
+        <Banner kind="warn" message={error} style={styles.errorBanner} />
+        <Button variant="secondary" title="Reintentar" onPress={load} />
       </View>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Avatar uri={profile.photoUri} name={profile.name} size={110} />
-        <Text style={styles.name}>{profile.name}</Text>
-        <Text style={styles.since}>{formatMemberSince(profile.memberSince)}</Text>
-      </View>
-      <ReputationCard reputation={profile.reputation} />
-      <BadgeList reputation={profile.reputation} />
+      <Banner kind="info" message="No mostramos el teléfono ni las publicaciones de otras personas." />
+
+      <Card style={styles.card}>
+        <View style={styles.header}>
+          <Avatar uri={profile.photoUri} name={profile.name} size={96} />
+          <Text style={styles.name}>{profile.name}</Text>
+          <Text style={styles.since}>{formatMemberSince(profile.memberSince)}</Text>
+        </View>
+        <ReputationCard reputation={profile.reputation} />
+        <BadgeList reputation={profile.reputation} />
+      </Card>
+
       <ThanksList thanks={profile.thanks} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1 },
-  container: { padding: spacing.lg, backgroundColor: colors.background, flexGrow: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  container: { padding: spacing.screen, backgroundColor: colors.surface, flexGrow: 1 },
+  card: { marginTop: spacing.md },
   header: { alignItems: 'center' },
-  name: { fontSize: 24, fontWeight: '700', color: colors.text, marginTop: spacing.md },
-  since: { color: colors.muted, marginTop: 2 },
-  errorBox: { alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  errorText: { color: colors.error, textAlign: 'center' },
+  name: { ...typography.section, color: colors.text, marginTop: spacing.ms },
+  since: { ...typography.meta, color: colors.textDim },
+  errorBox: { padding: spacing.screen },
+  errorBanner: { alignSelf: 'stretch', marginBottom: spacing.md },
 });

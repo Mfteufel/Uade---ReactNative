@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Avatar from './Avatar';
 import Button from './Button';
-import { colors, spacing } from '../constants/theme';
+import Card from './Card';
+import SectionTitle from './SectionTitle';
+import { colors, spacing, typography } from '../constants/theme';
 import { formatReturnDate } from '../utils/formatHistory';
 
 const MAX_LINES = 3;
@@ -13,15 +15,17 @@ function ThanksItem({ item }) {
   const long = [...item.message].length > LONG_MESSAGE;
 
   return (
-    <View style={styles.item}>
+    <Card tight style={styles.item}>
       <View style={styles.author}>
         <Avatar uri={item.author.photoUri} name={item.author.name} size={32} />
-        <Text style={styles.name}>{item.author.name}</Text>
-        <Text style={styles.date}>{formatReturnDate(item.createdAt)}</Text>
+        <View style={styles.authorText}>
+          <Text style={styles.name}>{item.author.name}</Text>
+          <Text style={styles.date}>{formatReturnDate(item.createdAt)}</Text>
+        </View>
       </View>
       <Text style={styles.message} numberOfLines={expanded || !long ? undefined : MAX_LINES}>{item.message}</Text>
       {long ? <Button variant="link" title={expanded ? 'Ver menos' : 'Ver más'} onPress={() => setExpanded(!expanded)} /> : null}
-    </View>
+    </Card>
   );
 }
 
@@ -32,7 +36,7 @@ export default function ThanksList({ thanks }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Agradecimientos</Text>
+      <SectionTitle title="Agradecimientos" />
       {thanks.length === 0 ? (
         <Text style={styles.muted}>Todavía no recibió agradecimientos.</Text>
       ) : (
@@ -44,12 +48,12 @@ export default function ThanksList({ thanks }) {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: spacing.lg },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
-  muted: { color: colors.muted },
-  item: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, marginBottom: spacing.sm },
-  author: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
-  name: { marginLeft: spacing.sm, fontWeight: '600', color: colors.text, flex: 1 },
-  date: { color: colors.muted, fontSize: 12 },
-  message: { color: colors.text },
+  container: { marginTop: spacing.md },
+  muted: { ...typography.body, color: colors.textDim },
+  item: { marginBottom: spacing.sm },
+  author: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  authorText: { marginLeft: spacing.sm, flex: 1 },
+  name: { ...typography.bodyStrong, color: colors.text },
+  date: { ...typography.meta, color: colors.textDim },
+  message: { ...typography.body, color: colors.text },
 });
