@@ -1,81 +1,127 @@
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
+import Banner from '../../components/Banner';
+import BottomActionBar from '../../components/BottomActionBar';
 import Button from '../../components/Button';
+import Card from '../../components/Card';
+import Chip from '../../components/Chip';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import FormScreen from '../../components/FormScreen';
+import SectionTitle from '../../components/SectionTitle';
+import { useAuth } from '../../context/AuthContext';
+import { usePendingPublications } from '../../context/PendingPublicationsContext';
 import useSettings from '../../hooks/useSettings';
-import { colors, spacing } from '../../constants/theme';
+import { colors, spacing, typography } from '../../constants/theme';
+import appJson from '../../../app.json';
 
 export default function SettingsScreen() {
   const {
-    user, biometricEnabled, logout, status, saving, error, onToggle,
+    user, biometricEnabled, status, saving, error, onToggle,
     phoneError, savingPhone, onPhonePrivacy,
   } = useSettings();
+  // La confirmación pasa a ConfirmDialog: se llama directo al cierre de sesión de AuthContext
+  // (el del hook mostraría además su propio Alert cuando hay publicaciones pendientes).
+  const { logout } = useAuth();
+  const { pending } = usePendingPublications();
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   const privacyOptions = [
     { visible: true, label: 'Mostrar mi teléfono cuando se acepte un reclamo' },
     { visible: false, label: 'Comunicarme solo por la app' },
   ];
 
+  // Si hay publicaciones pendientes de envío se avisa que se van a borrar (mismo texto de siempre).
+  const count = pending.length === 1 ? 'una publicación pendiente' : `${pending.length} publicaciones pendientes`;
+  const logoutMessage = pending.length > 0
+    ? `Tenés ${count} de envío. Si cerrás sesión se van a borrar.`
+    : 'Vas a tener que volver a entrar con tu email y contraseña. Tus publicaciones y reclamos no se borran.';
+
+  const footer = (
+    <BottomActionBar>
+      <Button title="Cerrar sesión" variant="dangerOutline" onPress={() => setConfirmVisible(true)} accessibilityLabel="Cerrar sesión" />
+    </BottomActionBar>
+  );
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.section}>Privacidad del teléfono</Text>
-      {privacyOptions.map((opt) => {
-        const selected = user.phoneVisibleOnClaim === opt.visible;
-        return (
-          <Pressable key={opt.label} style={styles.option} onPress={() => onPhonePrivacy(opt.visible)} disabled={savingPhone}>
-            <View style={[styles.radio, selected && styles.radioOn]}>{selected ? <View style={styles.radioDot} /> : null}</View>
-            <Text style={styles.optionLabel}>{opt.label}</Text>
-          </Pressable>
-        );
-      })}
-      {savingPhone ? <ActivityIndicator style={styles.phoneSpinner} /> : null}
-      {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
-
-      <Text style={[styles.section, styles.sectionGap]}>Seguridad</Text>
-      {status === null ? (
-        <ActivityIndicator />
-      ) : (
-        <>
-          <View style={styles.row}>
-            <View style={styles.rowText}>
-              <Text style={styles.label}>Desbloqueo con huella o rostro</Text>
-              <Text style={styles.hint}>Al abrir la app te pedimos tu huella en lugar de la contraseña.</Text>
-            </View>
-            {saving ? (
-              <ActivityIndicator />
-            ) : (
-              <Switch
-                value={biometricEnabled}
-                onValueChange={onToggle}
-                disabled={!status.available}
-                trackColor={{ true: colors.primary }}
+    <>
+      <FormScreen footer={footer}>
+        <SectionTitle title="Privacidad del teléfono" style={styles.firstSection} />
+        <Card>
+          <View style={styles.options}>
+            {privacyOptions.map((opt) => (
+              <Chip
+                key={opt.label}
+                label={opt.label}
+                selected={user.phoneVisibleOnClaim === opt.visible}
+                onPress={() => onPhonePrivacy(opt.visible)}
+                disabled={savingPhone}
+                accessibilityLabel={opt.label}
               />
-            )}
+            ))}
           </View>
-          {!status.available ? <Text style={styles.hint}>{status.message}</Text> : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </>
-      )}
+          <Text style={styles.hint}>Sólo cuando se acepta un reclamo, y sólo a esa persona.</Text>
+          {savingPhone ? <ActivityIndicator style={styles.phoneSpinner} accessibilityLabel="Guardando" /> : null}
+        </Card>
+        {phoneError ? <Banner kind="warn" message={phoneError} style={styles.banner} /> : null}
 
-      <View style={styles.logout}>
-        <Button title="Cerrar sesión" onPress={logout} />
-      </View>
-    </View>
+        <SectionTitle title="Seguridad" style={styles.section} />
+        {status === null ? (
+          <ActivityIndicator accessibilityLabel="Cargando" />
+        ) : (
+          <>
+            <Card>
+              <View style={styles.row}>
+                <View style={styles.rowText}>
+                  <Text style={styles.label}>Desbloqueo con huella o rostro</Text>
+                  <Text style={styles.hint}>Al abrir la app te pedimos tu huella en lugar de la contraseña.</Text>
+                </View>
+                {saving ? (
+                  <ActivityIndicator accessibilityLabel="Guardando" />
+                ) : (
+                  <Switch
+                    value={biometricEnabled}
+                    onValueChange={onToggle}
+                    disabled={!status.available}
+                    trackColor={{ true: colors.primary }}
+                    accessibilityLabel="Desbloqueo con huella o rostro"
+                    accessibilityState={{ checked: biometricEnabled, disabled: !status.available }}
+                  />
+                )}
+              </View>
+              {!status.available ? <Text style={styles.hint}>{status.message}</Text> : null}
+            </Card>
+            {error ? <Banner kind="warn" message={error} style={styles.banner} /> : null}
+          </>
+        )}
+
+        <Text style={styles.version}>Versión {appJson.expo.version}</Text>
+      </FormScreen>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        title="¿Cerrar sesión?"
+        message={logoutMessage}
+        confirmLabel="Cerrar sesión"
+        danger
+        onConfirm={() => {
+          setConfirmVisible(false);
+          logout();
+        }}
+        onCancel={() => setConfirmVisible(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
-  section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginBottom: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  firstSection: { marginTop: 0 },
+  section: { marginTop: spacing.lg },
+  options: { alignItems: 'flex-start' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowText: { flex: 1, paddingRight: spacing.md },
-  label: { fontSize: 16, color: colors.text, fontWeight: '500' },
-  hint: { color: colors.muted, fontSize: 13, marginTop: 2 },
-  error: { color: colors.error, marginTop: spacing.sm },
-  logout: { marginTop: spacing.xl },
-  sectionGap: { marginTop: spacing.xl },
-  option: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
-  optionLabel: { flex: 1, fontSize: 16, color: colors.text },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, marginRight: spacing.md, alignItems: 'center', justifyContent: 'center' },
-  radioOn: { borderColor: colors.primary },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+  label: { ...typography.body, color: colors.text, fontWeight: '500' },
+  hint: { ...typography.meta, color: colors.textDim, marginTop: 2 },
+  banner: { marginTop: spacing.sm },
   phoneSpinner: { alignSelf: 'flex-start', marginTop: spacing.xs },
+  version: { ...typography.meta, color: colors.textDim, textAlign: 'center', marginTop: spacing.xl },
 });
