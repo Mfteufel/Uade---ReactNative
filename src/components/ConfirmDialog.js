@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
   dialog: { backgroundColor: colors.bg, borderRadius: radius.card, padding: spacing.lg },
   title: { ...typography.section, color: colors.text },
   message: { ...typography.body, color: colors.text, marginTop: spacing.ms },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: spacing.lg },
-  action: { marginLeft: spacing.sm },
+  // Los botones se acomodan en renglones si no entran en el ancho del diálogo (el confirmar queda a la derecha / abajo).
+  actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: spacing.lg, marginLeft: -spacing.sm, marginBottom: -spacing.sm },
+  action: { flexGrow: 1, marginLeft: spacing.sm, marginBottom: spacing.sm },
 });

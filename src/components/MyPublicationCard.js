@@ -43,7 +43,7 @@ export default function MyPublicationCard({ publication, onPress, onRenew, renew
       )}
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={2}>{publication.title}</Text>
-        <Text style={styles.meta} numberOfLines={1}>
+        <Text style={styles.meta} numberOfLines={2}>
           {typeName} · {publication.category.name} · {publication.neighborhood.name}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>Pasó el {formatApiDate(publication.occurredOn)}</Text>

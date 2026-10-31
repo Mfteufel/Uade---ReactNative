@@ -13,7 +13,7 @@ export default function FormScreen({ title, subtitle, error, children, footer })
           </Text>
         ) : null}
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        {/* Aspecto del Banner de error (barra izquierda de 4 dp). Pasa a Banner cuando exista (paso 9). */}
+        {/* Aspecto del Banner de error (barra izquierda de 4 dp). */}
         {error ? (
           <View style={styles.formError} accessibilityRole="alert">
             <Text style={styles.formErrorText}>{error}</Text>

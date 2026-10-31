@@ -63,7 +63,7 @@ export default function PublishScreen({ navigation, route }) {
   });
   const { draft, steps, stepName } = form;
 
-  if (!draft) return <ActivityIndicator style={styles.center} size="large" />;
+  if (!draft) return <ActivityIndicator style={styles.center} size="large" color={colors.primary} accessibilityLabel="Cargando publicación" accessibilityLiveRegion="polite" />;
 
   const isLast = draft.step === steps.length - 1;
 

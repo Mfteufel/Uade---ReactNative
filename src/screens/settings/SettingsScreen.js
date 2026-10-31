@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowText: { flex: 1, paddingRight: spacing.md },
   label: { ...typography.body, color: colors.text, fontWeight: '500' },
-  hint: { ...typography.meta, color: colors.textDim, marginTop: 2 },
+  hint: { ...typography.body, color: colors.textDim, marginTop: 2 },
   banner: { marginTop: spacing.sm },
   phoneSpinner: { alignSelf: 'flex-start', marginTop: spacing.xs },
   version: { ...typography.meta, color: colors.textDim, textAlign: 'center', marginTop: spacing.xl },

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Banner from '../../components/Banner';
 import Button from '../../components/Button';
 import Chip from '../../components/Chip';
@@ -25,6 +26,7 @@ const TABS = [
 // "Mi historial": casos resueltos separados en "Devolví" y "Recuperé", con filtros de fechas, tipo y categoría
 // en una hoja. 0 botones primarios en la pantalla (el de la hoja es «Aplicar fechas»).
 export default function HistoryScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const {
     rol, setRol, applied, draft, setDraft, filterError, categories, hasFilters,
     setTipo, setCategoria, applyDates, clearFilters,
@@ -115,7 +117,7 @@ export default function HistoryScreen({ navigation }) {
         )}
         ListEmptyComponent={empty}
         ListFooterComponent={
-          loadingMore ? <ActivityIndicator style={styles.footer} color={colors.blue600} /> : error && items.length > 0 ? errorBox : null
+          loadingMore ? <ActivityIndicator style={styles.footer} color={colors.blue600} accessibilityLabel="Cargando historial" accessibilityLiveRegion="polite" /> : error && items.length > 0 ? errorBox : null
         }
         onEndReached={hasMore ? loadMore : undefined}
         onEndReachedThreshold={0.5}
@@ -125,7 +127,7 @@ export default function HistoryScreen({ navigation }) {
         contentContainerStyle={styles.list}
       />
       {notice ? (
-        <Text style={styles.notice} accessibilityLiveRegion="polite">{notice}</Text>
+        <Text style={[styles.notice, { bottom: spacing.lg + insets.bottom }]} accessibilityLiveRegion="polite">{notice}</Text>
       ) : null}
 
       <Sheet

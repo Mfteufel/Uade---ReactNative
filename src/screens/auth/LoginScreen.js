@@ -39,7 +39,7 @@ export default function LoginScreen({ navigation }) {
     <FormScreen
       footer={
         <BottomActionBar>
-          <Button variant="secondary" title="Crear una cuenta" onPress={() => navigation.navigate('RegisterEmail')} />
+          <Button variant="secondary" title="Crear una cuenta" style={styles.tight} onPress={() => navigation.navigate('RegisterEmail')} />
           <Button title="Entrar" loadingTitle="Entrando…" onPress={onSubmit} loading={loading} />
         </BottomActionBar>
       }
@@ -83,6 +83,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   brand: { ...typography.display, color: colors.blue600, marginBottom: spacing.sm },
   subtitle: { ...typography.body, color: colors.textDim, marginBottom: spacing.lg },
+  tight: { paddingHorizontal: spacing.sm },
   banner: { marginBottom: spacing.md },
   // Pegado al campo de contraseña: compensa el espacio de 24 dp que deja el campo.
   forgot: { alignSelf: 'flex-start', marginTop: -(spacing.formGap - spacing.xs) },

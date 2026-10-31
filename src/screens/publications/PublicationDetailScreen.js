@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   infoLabel: { ...typography.caption, color: colors.textDim },
   infoValue: { ...typography.body, color: colors.text },
   description: { ...typography.body, color: colors.text, marginTop: spacing.ms },
-  muted: { ...typography.meta, color: colors.textDim },
+  muted: { ...typography.body, color: colors.textDim },
   publisher: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms },
   publisherTexts: { flex: 1 },
   publisherName: { ...typography.bodyStrong, color: colors.text },

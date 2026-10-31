@@ -42,7 +42,7 @@ export default function ResultCard({
       )}
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        {meta1 ? <Text style={styles.meta} numberOfLines={1}>{meta1}</Text> : null}
+        {meta1 ? <Text style={styles.meta} numberOfLines={2}>{meta1}</Text> : null}
         {dateText ? <Text style={styles.meta} numberOfLines={1}>{dateText}</Text> : null}
         {statusLabel ? (
           <View style={styles.tag}>

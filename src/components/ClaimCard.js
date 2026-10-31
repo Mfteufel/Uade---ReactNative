@@ -39,7 +39,7 @@ export default function ClaimCard({ claim, onPress }) {
         <View style={styles.body}>
           <Text style={styles.title} numberOfLines={2}>{claim.publication.title}</Text>
           <Text style={styles.meta} numberOfLines={1}>{typeRole}</Text>
-          <Text style={styles.meta} numberOfLines={1}>{other}</Text>
+          <Text style={styles.meta} numberOfLines={2}>{other}</Text>
           <Text style={styles.meta}>{formatDateTime(claim.createdAt)}</Text>
           <View style={styles.tag}>
             <ClaimStatusBadge status={claim.status} />

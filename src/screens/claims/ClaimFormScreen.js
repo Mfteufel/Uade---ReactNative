@@ -58,7 +58,7 @@ export default function ClaimFormScreen({ route, navigation }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { info, loading, error, load, errors, formError } = form;
 
-  if (loading) return <ActivityIndicator style={styles.center} size="large" color={colors.blue600} />;
+  if (loading) return <ActivityIndicator style={styles.center} size="large" color={colors.blue600} accessibilityLabel="Cargando formulario" accessibilityLiveRegion="polite" />;
 
   if (error || !info) {
     return (

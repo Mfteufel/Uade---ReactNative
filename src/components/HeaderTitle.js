@@ -19,7 +19,7 @@ export default function HeaderTitle({ title, subtitle }) {
 }
 
 const styles = StyleSheet.create({
-  box: { height: 72, justifyContent: 'center' },
+  box: { minHeight: 72, justifyContent: 'center' },
   title: { ...typography.titleBar, color: colors.onPrimary },
   subtitle: { ...typography.meta, color: colors.onPrimary, opacity: 0.78 },
 });
