@@ -3,11 +3,10 @@ import Banner from '../../components/Banner';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Chip from '../../components/Chip';
-import ListRow from '../../components/ListRow';
 import SearchFields from '../../components/SearchFields';
 import SectionTitle from '../../components/SectionTitle';
 import useSearchScreen from '../../hooks/useSearchScreen';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, spacing } from '../../constants/theme';
 import { describeSearch } from '../../utils/formatSearch';
 
 const MAX_RECENT_LABEL = 44; // las búsquedas largas se cortan en el chip (el texto completo va en la descripción)
@@ -58,11 +57,6 @@ export default function SearchScreen({ navigation }) {
           </View>
         </View>
       ) : null}
-
-      {/* Acceso provisional a Mi historial hasta que pase a la fila de Perfil (paso 30 del plan). */}
-      <View style={styles.history}>
-        <ListRow icon="history" title="Mi historial" last onPress={() => navigation.navigate('History')} />
-      </View>
     </ScrollView>
   );
 }
@@ -72,5 +66,4 @@ const styles = StyleSheet.create({
   banner: { marginBottom: spacing.md },
   recents: { marginTop: spacing.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap' },
-  history: { marginTop: spacing.md, backgroundColor: colors.bg, borderRadius: radius.card, overflow: 'hidden' },
 });

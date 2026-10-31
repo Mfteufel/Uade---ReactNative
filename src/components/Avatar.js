@@ -22,5 +22,5 @@ export default function Avatar({ uri, name = '', size = 96 }) {
 const styles = StyleSheet.create({
   image: { backgroundColor: colors.surface },
   placeholder: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  initials: { color: '#fff', fontWeight: '700' },
+  initials: { color: colors.onPrimary, fontWeight: '500' },
 });
