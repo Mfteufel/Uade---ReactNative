@@ -2,7 +2,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { colors, radius, spacing, touch, typography } from '../constants/theme';
 import Icon from './Icon';
 
-// variant: 'primary' (relleno) | 'secondary' (borde) | 'accent' (solo Publicar) | 'danger' | 'dangerOutline' | 'link' (solo texto).
+// variant: 'primary' (relleno) | 'secondary' (borde) | 'accent' (solo Publicar) | 'danger' | 'dangerOutline' | 'link' (solo texto)
+//   | 'inverse' | 'inverseOutline' (solo para fondos azul pleno: pantalla de Bloqueo; C24).
 //   Una variante desconocida cae en 'primary'.
 // title: etiqueta. `label` es un alias (si vienen los dos, manda `title`).
 // loading: reemplaza la etiqueta por un spinner + `loadingTitle` (gerundio; por defecto, la etiqueta) sin cambiar el ancho.
@@ -37,6 +38,18 @@ const VARIANTS = {
     normal: { bg: 'transparent', fg: colors.danger, border: colors.danger },
     pressed: { bg: colors.dangerSoft, fg: colors.danger800, border: colors.danger800 },
     off: { bg: 'transparent', fg: colors.textDim, border: colors.border },
+  },
+  // Sobre fondo azul pleno: blue600 sobre blanco 5,75:1.
+  inverse: {
+    normal: { bg: colors.onPrimary, fg: colors.blue600 },
+    pressed: { bg: colors.blue50, fg: colors.blue600 },
+    off: { bg: colors.onPrimary + '40', fg: colors.onPrimary + 'B3' }, // blanco al 25 % con texto al 70 %
+  },
+  // Borde y texto blancos sobre azul pleno: 5,75:1. Presionado: blanco al 15 %.
+  inverseOutline: {
+    normal: { bg: 'transparent', fg: colors.onPrimary, border: colors.onPrimary },
+    pressed: { bg: colors.onPrimary + '26', fg: colors.onPrimary, border: colors.onPrimary },
+    off: { bg: 'transparent', fg: colors.onPrimary + '99', border: colors.onPrimary + '66' },
   },
   link: {
     normal: { bg: 'transparent', fg: colors.blue600 },
