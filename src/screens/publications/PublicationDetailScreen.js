@@ -1,7 +1,23 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Alert, Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import OfflineNotice from '../../components/OfflineNotice';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import Avatar from '../../components/Avatar';
+import Banner from '../../components/Banner';
+import BottomActionBar from '../../components/BottomActionBar';
+import Button from '../../components/Button';
+import Card from '../../components/Card';
+import Icon from '../../components/Icon';
+import StateTag from '../../components/StateTag';
 import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { getPublication } from '../../services/publicationDetailApi';
@@ -9,22 +25,34 @@ import { followPublication, unfollowPublication } from '../../services/followsAp
 import { getViewed, saveViewed } from '../../services/viewedPublications';
 import { getErrorMessage, isNetworkError } from '../../services/errors';
 import { showOfflineToast } from '../../utils/offlineToast';
-import { PUBLICATION_STATUS } from '../../constants/publications';
-import { colors, spacing } from '../../constants/theme';
+import { formatApiDate } from '../../utils/dates';
+import { PUBLICATION_STATUS, TIME_SLOTS } from '../../constants/publications';
+import { colors, radius, spacing, typography } from '../../constants/theme';
 
-const PHOTO_WIDTH = Dimensions.get('window').width - spacing.md * 2;
+// Nombre de la franja horaria según desde/hasta que guarda la API; si no coincide con una franja, el rango escrito.
+function timeSlotText(timeFrom, timeTo) {
+  if (!timeFrom || !timeTo) return '';
+  const slot = TIME_SLOTS.find((s) => s.timeFrom === timeFrom && s.timeTo === timeTo);
+  return slot ? slot.name : `de ${timeFrom} a ${timeTo} h`;
+}
 
-// La pantalla es una lista de bloques: así scrollea con FlatList.
-const BLOCKS = ['fotos', 'datos', 'publicador', 'acciones'];
-
-// '2026-10-24' -> '24/10/2026'
-function formatDate(isoDate) {
-  const [year, month, day] = isoDate.split('-');
-  return `${day}/${month}/${year}`;
+// Par etiqueta-valor con ícono.
+function InfoRow({ icon, label, value }) {
+  return (
+    <View style={styles.infoRow} accessible accessibilityLabel={`${label}: ${value}`}>
+      <Icon name={icon} size={24} color={colors.textDim} />
+      <View style={styles.infoTexts}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue}>{value}</Text>
+      </View>
+    </View>
+  );
 }
 
 export default function PublicationDetailScreen({ route, navigation }) {
   const { publicationId } = route.params;
+  const { width } = useWindowDimensions();
+  const photoWidth = width - spacing.screen * 2;
   const [publication, setPublication] = useState(null);
   const [error, setError] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -37,42 +65,56 @@ export default function PublicationDetailScreen({ route, navigation }) {
 
   // Se recarga cada vez que la pantalla vuelve a verse (por ejemplo, después de reclamar) y cuando vuelve la conexión.
   // Sin conexión se usa la copia guardada, si ya se había abierto antes.
-  useFocusEffect(
-    useCallback(() => {
-      const showSaved = async () => {
-        const saved = await getViewed(user.id, publicationId);
-        if (saved) {
-          setPublication(saved.publication);
-          setSavedAt(saved.savedAt);
-        } else {
-          setMissingOffline(true);
-        }
-      };
-      if (!isOnline) {
-        showSaved();
-        return;
+  const load = useCallback(() => {
+    const showSaved = async () => {
+      const saved = await getViewed(user.id, publicationId);
+      if (saved) {
+        setPublication(saved.publication);
+        setSavedAt(saved.savedAt);
+      } else {
+        setMissingOffline(true);
       }
-      getPublication(publicationId)
-        .then((p) => {
-          setPublication(p);
-          setSavedAt(null);
-          setMissingOffline(false);
-          setError('');
-          saveViewed(user.id, p);
-        })
-        .catch((e) => (isNetworkError(e) ? showSaved() : setError(getErrorMessage(e))));
-    }, [publicationId, user.id, isOnline])
-  );
+    };
+    setError('');
+    if (!isOnline) {
+      showSaved();
+      return;
+    }
+    getPublication(publicationId)
+      .then((p) => {
+        setPublication(p);
+        setSavedAt(null);
+        setMissingOffline(false);
+        setError('');
+        saveViewed(user.id, p);
+      })
+      .catch((e) => (isNetworkError(e) ? showSaved() : setError(getErrorMessage(e))));
+  }, [publicationId, user.id, isOnline]);
+
+  useFocusEffect(load);
 
   if (missingOffline && !publication) {
     return (
-      <View style={[styles.screen, styles.block]}>
-        <OfflineNotice text="Dispositivo sin conexión, no se puede acceder al detalle." />
+      <View style={styles.screen}>
+        <Banner kind="offline" message="Dispositivo sin conexión, no se puede acceder al detalle." />
       </View>
     );
   }
-  if (error) return <Text style={styles.message}>{error}</Text>;
-  if (!publication) return <Text style={styles.message}>Cargando...</Text>;
+  if (error) {
+    return (
+      <View style={[styles.screen, styles.centered]}>
+        <Banner kind="warn" message={error} />
+        <Button variant="link" title="Reintentar" onPress={load} />
+      </View>
+    );
+  }
+  if (!publication) {
+    return (
+      <View style={[styles.screen, styles.centered]}>
+        <ActivityIndicator size="large" color={colors.blue600} accessibilityLabel="Cargando publicación" />
+      </View>
+    );
+  }
 
   async function toggleFollow() {
     if (saving) return;
@@ -93,15 +135,36 @@ export default function PublicationDetailScreen({ route, navigation }) {
     if (photos.length === 0) return <Text style={styles.muted}>Sin fotos.</Text>;
     return (
       <View>
-        <Image source={{ uri: photos[photoIndex] }} style={styles.photo} />
+        <Image
+          source={{ uri: photos[photoIndex] }}
+          style={[styles.photo, { width: photoWidth, height: photoWidth * 0.75 }]}
+          accessibilityLabel={`Foto ${photoIndex + 1} de ${photos.length}`}
+          accessibilityIgnoresInvertColors
+        />
         {photos.length > 1 && (
-          <View style={styles.thumbs}>
-            {photos.map((url, index) => (
-              <TouchableOpacity key={url} onPress={() => setPhotoIndex(index)}>
-                <Image source={{ uri: url }} style={index === photoIndex ? styles.thumbSelected : styles.thumb} />
-              </TouchableOpacity>
-            ))}
-          </View>
+          <>
+            <Text style={styles.photoCount}>
+              {photoIndex + 1} de {photos.length}
+            </Text>
+            <View style={styles.thumbs}>
+              {photos.map((url, index) => (
+                <Pressable
+                  key={url}
+                  onPress={() => setPhotoIndex(index)}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver foto ${index + 1} de ${photos.length}`}
+                  accessibilityState={{ selected: index === photoIndex }}
+                >
+                  <Image
+                    source={{ uri: url }}
+                    style={index === photoIndex ? styles.thumbSelected : styles.thumb}
+                    accessibilityIgnoresInvertColors
+                  />
+                </Pressable>
+              ))}
+            </View>
+          </>
         )}
       </View>
     );
@@ -109,21 +172,25 @@ export default function PublicationDetailScreen({ route, navigation }) {
 
   function renderData() {
     const status = PUBLICATION_STATUS[publication.status];
-    const hours = publication.timeFrom && publication.timeTo ? `, de ${publication.timeFrom} a ${publication.timeTo} h` : '';
+    const slot = timeSlotText(publication.timeFrom, publication.timeTo);
     return (
       <View>
-        <Text style={styles.title}>{publication.title}</Text>
-        <Text style={{ color: status.color, fontWeight: 'bold' }}>{status.label}</Text>
-        <Text style={styles.text}>
-          {publication.type === 'found' ? 'Encontrado' : 'Perdido'} · {publication.category.name}
+        <Text style={styles.title} accessibilityRole="header">
+          {publication.title}
         </Text>
-        <Text style={styles.text}>Barrio: {publication.neighborhood.name}</Text>
-        <Text style={styles.text}>Cuándo: {formatDate(publication.occurredOn)}{hours}</Text>
-        {publication.description ? <Text style={styles.text}>{publication.description}</Text> : null}
-        {publication.exactAddress ? <Text style={styles.text}>Dirección: {publication.exactAddress}</Text> : null}
+        {status ? <StateTag label={status.label} fg={status.color} bg={status.bg} /> : null}
+        <View style={styles.infoList}>
+          <InfoRow icon="search" label="Tipo" value={publication.type === 'found' ? 'Encontrado' : 'Perdido'} />
+          <InfoRow icon="tag" label="Categoría" value={publication.category.name} />
+          <InfoRow icon="location" label="Barrio" value={publication.neighborhood.name} />
+          <InfoRow icon="calendar" label="Fecha" value={formatApiDate(publication.occurredOn)} />
+          {slot ? <InfoRow icon="clock" label="Franja horaria" value={slot} /> : null}
+          {publication.exactAddress ? <InfoRow icon="pin" label="Dirección" value={publication.exactAddress} /> : null}
+        </View>
         {!publication.exactAddress && !publication.isOwner && (
-          <Text style={styles.muted}>La dirección exacta se muestra cuando se acepta tu reclamo.</Text>
+          <Banner kind="info" message="La dirección exacta se muestra recién cuando se acepta un reclamo." />
         )}
+        {publication.description ? <Text style={styles.description}>{publication.description}</Text> : null}
       </View>
     );
   }
@@ -132,105 +199,101 @@ export default function PublicationDetailScreen({ route, navigation }) {
     const { publisher } = publication;
     const { reputation } = publisher;
     const percent = reputation.positivePercent === null ? '' : ` · ${reputation.positivePercent}% positivas`;
+    const summary = `${reputation.points} puntos · ${reputation.completedReturns} devoluciones${percent}`;
     return (
-      <View style={styles.card}>
-        <Text style={styles.subtitle}>Publicado por {publisher.name}</Text>
-        <Text style={styles.text}>
-          {reputation.points} puntos · {reputation.completedReturns} devoluciones{percent}
-        </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: publisher.id })}>
-          <Text style={styles.link}>Ver perfil público</Text>
-        </TouchableOpacity>
-      </View>
+      <Card
+        onPress={() => navigation.navigate('PublicProfile', { userId: publisher.id })}
+        accessibilityLabel={`Publicado por ${publisher.name}. ${summary}. Ver perfil público`}
+      >
+        <View style={styles.publisher}>
+          <Avatar uri={publisher.photoUri} name={publisher.name} size={48} />
+          <View style={styles.publisherTexts}>
+            <Text style={styles.publisherName}>Publicado por {publisher.name}</Text>
+            <Text style={styles.publisherMeta}>{summary}</Text>
+          </View>
+          <Icon name="chevron" size={20} color={colors.textDim} />
+        </View>
+      </Card>
     );
   }
 
-  function renderActions() {
+  // Barra de acción fija: el dueño ve «Gestionar mis publicaciones»; un tercero, el reclamo (solo si está abierta) y seguir.
+  function renderActionBar() {
     if (publication.isOwner) {
       return (
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('MyPublications')}>
-          <Text style={styles.buttonText}>Gestionar mis publicaciones</Text>
-        </TouchableOpacity>
+        <BottomActionBar>
+          <Button title="Gestionar mis publicaciones" onPress={() => navigation.navigate('MyPublications')} />
+        </BottomActionBar>
       );
     }
+    const follow = (
+      <Button
+        key="seguir"
+        variant="secondary"
+        title={saving ? 'Guardando…' : publication.isFollowing ? 'Siguiendo' : 'Seguir'}
+        dimmed={!isOnline}
+        style={styles.compact}
+        accessibilityLabel={publication.isFollowing ? 'Siguiendo. Tocá para dejar de seguir' : 'Seguir publicación'}
+        onPress={isOnline ? toggleFollow : () => showOfflineToast()}
+      />
+    );
+    if (publication.status !== 'open') return <BottomActionBar>{follow}</BottomActionBar>;
     return (
-      <View>
-        {publication.status === 'open' && (
-          <TouchableOpacity
-            style={[styles.button, !isOnline && styles.disabled]}
-            onPress={() =>
-              isOnline ? navigation.navigate('ClaimForm', { publicationId: publication.id }) : showOfflineToast()
-            }
-          >
-            <Text style={styles.buttonText}>{publication.type === 'found' ? 'Es mío' : 'Lo encontré'}</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.buttonOutline, !isOnline && styles.disabled]}
-          onPress={isOnline ? toggleFollow : () => showOfflineToast()}
-        >
-          <Text style={styles.buttonOutlineText}>
-            {saving ? 'Guardando...' : publication.isFollowing ? 'Dejar de seguir' : 'Seguir publicación'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <BottomActionBar>
+        {follow}
+        <Button
+          key="reclamar"
+          title={publication.type === 'found' ? 'Es mío' : 'Lo encontré'}
+          dimmed={!isOnline}
+          onPress={() =>
+            isOnline ? navigation.navigate('ClaimForm', { publicationId: publication.id }) : showOfflineToast()
+          }
+        />
+      </BottomActionBar>
     );
   }
-
-  const renderBlock = { fotos: renderPhotos, datos: renderData, publicador: renderPublisher, acciones: renderActions };
 
   return (
     <View style={styles.screen}>
-      {savedAt && (
-        <View style={styles.block}>
-          <OfflineNotice text="Dispositivo sin conexión, la información puede no estar actualizada." />
-        </View>
-      )}
-      <FlatList
-        data={BLOCKS}
-        keyExtractor={(block) => block}
-        renderItem={({ item }) => <View style={styles.block}>{renderBlock[item]()}</View>}
-      />
+      {savedAt && <Banner kind="offline" message="Dispositivo sin conexión, la información puede no estar actualizada." />}
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.block}>{renderPhotos()}</View>
+        <View style={styles.block}>{renderData()}</View>
+        <View style={styles.block}>{renderPublisher()}</View>
+      </ScrollView>
+      {renderActionBar()}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.md },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  centered: { justifyContent: 'center', padding: spacing.screen },
+  content: { paddingHorizontal: spacing.screen, paddingVertical: spacing.sm },
   block: { paddingVertical: spacing.sm },
-  message: { padding: spacing.md, color: colors.text },
-  photo: { width: PHOTO_WIDTH, height: PHOTO_WIDTH * 0.75, borderRadius: 8, backgroundColor: colors.surface },
-  thumbs: { flexDirection: 'row', marginTop: spacing.sm },
-  thumb: { width: 56, height: 56, borderRadius: 6, marginRight: spacing.sm, opacity: 0.6 },
+  photo: { borderRadius: radius.card, backgroundColor: colors.surface },
+  photoCount: { ...typography.meta, color: colors.textDim, marginTop: spacing.sm },
+  thumbs: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
+  thumb: { width: 56, height: 56, borderRadius: radius.thumb, marginRight: spacing.sm, opacity: 0.6 },
   thumbSelected: {
     width: 56,
     height: 56,
-    borderRadius: 6,
+    borderRadius: radius.thumb,
     marginRight: spacing.sm,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: colors.blue600,
   },
-  title: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: spacing.xs },
-  subtitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-  text: { fontSize: 15, color: colors.text, marginTop: spacing.xs },
-  muted: { fontSize: 14, color: colors.muted, marginTop: spacing.xs },
-  card: { backgroundColor: colors.surface, borderRadius: 8, padding: spacing.md },
-  link: { color: colors.primary, fontWeight: 'bold', marginTop: spacing.sm },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  buttonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
-  buttonOutline: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  buttonOutlineText: { color: colors.primary, fontWeight: 'bold', fontSize: 16 },
-  disabled: { opacity: 0.5 },
+  title: { ...typography.titleBar, color: colors.text, marginBottom: spacing.sm },
+  infoList: { marginVertical: spacing.sm },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms, paddingVertical: spacing.xs },
+  infoTexts: { flex: 1 },
+  infoLabel: { ...typography.caption, color: colors.textDim },
+  infoValue: { ...typography.body, color: colors.text },
+  description: { ...typography.body, color: colors.text, marginTop: spacing.ms },
+  muted: { ...typography.body, color: colors.textDim },
+  publisher: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms },
+  publisherTexts: { flex: 1 },
+  publisherName: { ...typography.bodyStrong, color: colors.text },
+  publisherMeta: { ...typography.meta, color: colors.textDim },
+  compact: { paddingHorizontal: spacing.sm },
 });

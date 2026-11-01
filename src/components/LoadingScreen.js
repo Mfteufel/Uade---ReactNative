@@ -6,7 +6,7 @@ export default function LoadingScreen() {
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/splash-icon.png')} style={styles.logo} resizeMode="contain" />
-      <ActivityIndicator size="small" color={colors.primary} style={styles.spinner} />
+      <ActivityIndicator size="small" color={colors.primary} style={styles.spinner} accessibilityLabel="Cargando" accessibilityLiveRegion="polite" />
     </View>
   );
 }

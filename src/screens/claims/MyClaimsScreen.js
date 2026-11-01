@@ -1,6 +1,10 @@
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
+import Banner from '../../components/Banner';
 import Button from '../../components/Button';
 import ClaimCard from '../../components/ClaimCard';
+import EmptyState from '../../components/EmptyState';
+import SegmentedTabs from '../../components/SegmentedTabs';
+import SkeletonCard from '../../components/SkeletonCard';
 import useMyClaims from '../../hooks/useMyClaims';
 import { colors, spacing } from '../../constants/theme';
 
@@ -19,27 +23,20 @@ export default function MyClaimsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabs}>
-        {TABS.map((item) => (
-          <Pressable
-            key={item.key}
-            onPress={() => setTab(item.key)}
-            style={[styles.tab, tab === item.key && styles.tabActive]}
-          >
-            <Text style={[styles.tabText, tab === item.key && styles.tabTextActive]}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      {/* Pegados al encabezado azul (que en esta pestaña va sin sombra). Sin contador: el hook devuelve una sola lista. */}
+      <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
 
       {error ? (
         <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Banner kind="warn" message={error} />
           <Button variant="link" title="Reintentar" onPress={load} loading={loading} />
         </View>
       ) : null}
 
       {loading && claims.length === 0 && !error ? (
-        <ActivityIndicator style={styles.center} size="large" />
+        <View style={styles.list}>
+          <SkeletonCard count={3} />
+        </View>
       ) : (
         <FlatList
           data={claims}
@@ -47,7 +44,7 @@ export default function MyClaimsScreen({ navigation }) {
           renderItem={({ item }) => (
             <ClaimCard claim={item} onPress={() => navigation.navigate('ClaimDetail', { claimId: item.id })} />
           )}
-          ListEmptyComponent={error ? null : <Text style={styles.empty}>{EMPTY_TEXT[tab]}</Text>}
+          ListEmptyComponent={error ? null : <EmptyState icon="list" title={EMPTY_TEXT[tab]} />}
           contentContainerStyle={styles.list}
         />
       )}
@@ -56,15 +53,7 @@ export default function MyClaimsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  tabs: { flexDirection: 'row', padding: spacing.md, paddingBottom: 0 },
-  tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: colors.border },
-  tabActive: { borderBottomColor: colors.primary },
-  tabText: { color: colors.muted, fontWeight: '600' },
-  tabTextActive: { color: colors.primary },
-  list: { padding: spacing.md },
-  center: { flex: 1 },
-  empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.xl },
-  errorBox: { backgroundColor: '#FDECEA', borderRadius: 8, padding: spacing.md, margin: spacing.md },
-  errorText: { color: colors.error },
+  container: { flex: 1, backgroundColor: colors.surface },
+  list: { padding: spacing.screen },
+  errorBox: { margin: spacing.screen, marginBottom: 0 },
 });

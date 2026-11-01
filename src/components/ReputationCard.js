@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { colors, radius, spacing, typography } from '../constants/theme';
 
 function Stat({ value, label }) {
   return (
@@ -26,11 +26,11 @@ export default function ReputationCard({ reputation }) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, marginTop: spacing.md },
-  title: { fontSize: 12, color: colors.muted, textTransform: 'uppercase' },
-  points: { fontSize: 28, fontWeight: '700', color: colors.primary, marginVertical: spacing.xs },
+  card: { backgroundColor: colors.surface, borderRadius: radius.card, padding: spacing.md, marginTop: spacing.md },
+  title: { ...typography.meta, color: colors.textDim },
+  points: { ...typography.display, color: colors.blue600, marginVertical: spacing.xs },
   row: { flexDirection: 'row', marginTop: spacing.sm },
   stat: { flex: 1 },
-  statValue: { fontSize: 18, fontWeight: '600', color: colors.text },
-  statLabel: { fontSize: 12, color: colors.muted },
+  statValue: { ...typography.bodyStrong, color: colors.text },
+  statLabel: { ...typography.meta, color: colors.textDim },
 });

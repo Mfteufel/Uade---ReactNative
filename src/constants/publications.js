@@ -7,12 +7,14 @@ export const PUBLICATION_TYPES = [
   { id: 'found', name: 'Encontré algo' },
 ];
 
+const pub = colors.status.publication;
+
 export const PUBLICATION_STATUS = {
-  open: { label: 'Abierta', color: colors.primary },
-  in_claim: { label: 'En reclamo', color: colors.warning },
-  resolved: { label: 'Resuelta', color: colors.muted },
-  expired: { label: 'Vencida', color: colors.error },
-  pending: { label: 'Pendiente de envío', color: colors.warning }, // solo existe en el celular
+  open: { label: 'Abierta', color: pub.open.fg, bg: pub.open.bg },
+  in_claim: { label: 'En reclamo', color: pub.in_claim.fg, bg: pub.in_claim.bg },
+  resolved: { label: 'Resuelta', color: pub.resolved.fg, bg: pub.resolved.bg },
+  expired: { label: 'Vencida', color: pub.expired.fg, bg: pub.expired.bg },
+  pending: { label: 'Pendiente de envío', color: pub.pending.fg, bg: pub.pending.bg }, // aún sin dato (modo sin conexión)
 };
 
 // Franjas horarias del suceso. La API guarda desde/hasta; la app solo ofrece estas opciones.

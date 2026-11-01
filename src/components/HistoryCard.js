@@ -1,75 +1,81 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Avatar from './Avatar';
 import Button from './Button';
-import { colors, spacing } from '../constants/theme';
+import Card from './Card';
+import Icon from './Icon';
+import StateTag from './StateTag';
+import { colors, radius, spacing, typography } from '../constants/theme';
 import { HISTORY_TYPE_LABELS, formatReturnDate, historyStatus } from '../utils/formatHistory';
 
 // Una devolución del historial: fecha, objeto, contraparte (toca para ver su perfil), estado y acciones.
+// Sin sombra: la Card se separa con borde. Props sin cambios: item, onOpenProfile, onRate, onThank.
 export default function HistoryCard({ item, onOpenProfile, onRate, onThank }) {
   const status = historyStatus(item);
   const other = item.counterpart;
   const canThank = item.canThank && item.role === 'recupere';
   const typeLabel = HISTORY_TYPE_LABELS[item.object?.type];
+  const kind = [typeLabel, item.object?.category?.name].filter(Boolean).join(' · ');
+  const personText = other ? `${item.role === 'devolvi' ? 'Se lo devolviste a ' : 'Te lo devolvió '}${other.name}` : '';
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.date}>{formatReturnDate(item.date)}</Text>
+    <Card style={styles.card}>
+      <Text style={styles.meta}>{formatReturnDate(item.date)}</Text>
       {item.object ? (
         <>
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, styles.titleText]} numberOfLines={2}>{item.object.title}</Text>
-            {typeLabel ? <Text style={styles.type}>{typeLabel}</Text> : null}
-          </View>
-          {item.object.category ? <Text style={styles.muted}>{item.object.category.name}</Text> : null}
+          <Text style={styles.title} numberOfLines={2}>{item.object.title}</Text>
+          {kind ? <Text style={styles.meta}>{kind}</Text> : null}
         </>
       ) : (
-        <Text style={styles.muted}>Objeto no disponible</Text>
+        <Text style={styles.meta}>Objeto no disponible</Text>
       )}
 
       {other ? (
-        <Pressable style={styles.person} onPress={() => onOpenProfile(other.id)}>
+        <Pressable
+          style={({ pressed }) => [styles.person, pressed && styles.pressed]}
+          onPress={() => onOpenProfile(other.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`${personText}. Ver perfil`}
+        >
           <Avatar uri={other.photoUri} name={other.name} size={36} />
-          <Text style={styles.personName}>{item.role === 'devolvi' ? 'Se lo devolviste a ' : 'Te lo devolvió '}{other.name}</Text>
+          <Text style={styles.personName} numberOfLines={2}>{personText}</Text>
+          <Icon name="chevron" size={20} color={colors.textDim} />
         </Pressable>
       ) : (
-        <Text style={[styles.muted, styles.person]}>Persona no disponible</Text>
+        <Text style={[styles.meta, styles.noPerson]}>Persona no disponible</Text>
       )}
 
       {status.length > 0 ? (
         <View style={styles.row}>
           {status.map((label) => (
-            <Text key={label} style={styles.status}>{label}</Text>
+            <View key={label} style={styles.tag}>
+              <StateTag label={label} fg={colors.success} bg={colors.successSoft} />
+            </View>
           ))}
         </View>
       ) : null}
 
       {item.canRate || canThank ? (
-        <View style={styles.actions}>
-          {item.canRate ? <Button variant="link" title="Valorar" onPress={() => onRate(item)} /> : null}
-          {canThank ? <Button variant="link" title="Agradecer" onPress={() => onThank(item)} /> : null}
+        <View style={styles.row}>
+          {item.canRate ? <Button variant="secondary" title="Valorar" onPress={() => onRate(item)} style={styles.action} /> : null}
+          {canThank ? <Button variant="secondary" title="Agradecer" onPress={() => onThank(item)} style={styles.action} /> : null}
         </View>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md, marginBottom: spacing.md },
-  date: { color: colors.muted, fontSize: 13, marginBottom: spacing.xs },
-  title: { fontSize: 16, fontWeight: '600', color: colors.text },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  titleText: { flex: 1 },
-  type: {
-    fontSize: 11, fontWeight: '600', color: colors.primary, borderColor: colors.primary, borderWidth: 1,
-    borderRadius: 10, paddingVertical: 1, paddingHorizontal: spacing.sm, marginLeft: spacing.sm, marginTop: 2,
+  card: { marginBottom: spacing.md },
+  meta: { ...typography.meta, color: colors.textDim },
+  title: { ...typography.bodyStrong, color: colors.text },
+  person: {
+    flexDirection: 'row', alignItems: 'center', minHeight: 48, marginTop: spacing.sm,
+    borderRadius: radius.button,
   },
-  muted: { color: colors.muted, marginTop: 2 },
-  person: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
-  personName: { marginLeft: spacing.sm, color: colors.primary, fontWeight: '600', flexShrink: 1 },
+  pressed: { backgroundColor: colors.blue50 },
+  personName: { ...typography.bodyStrong, flex: 1, marginLeft: spacing.sm, color: colors.blue600 },
+  noPerson: { marginTop: spacing.sm },
   row: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
-  actions: { flexDirection: 'row', marginTop: spacing.xs },
-  status: {
-    fontSize: 12, fontWeight: '600', color: colors.text, backgroundColor: colors.background,
-    borderRadius: 12, paddingVertical: 2, paddingHorizontal: spacing.sm, marginRight: spacing.sm, marginTop: spacing.xs,
-  },
+  tag: { marginRight: spacing.sm, marginBottom: spacing.xs },
+  action: { minWidth: 96, marginRight: spacing.sm },
 });

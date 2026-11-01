@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import Banner from './Banner';
 import Button from './Button';
 import Chip from './Chip';
 import Input from './Input';
+import Sheet from './Sheet';
 import useReturnAction from '../hooks/useReturnAction';
 import { rateReturn } from '../services/historyApi';
 import { charCount, singleLine } from '../utils/textInput';
-import { colors, spacing } from '../constants/theme';
+import { colors, spacing, typography } from '../constants/theme';
 
 const MAX_COMMENT = 280;
 
 // Se monta solo mientras está abierto: cada vez arranca vacío.
+// Hoja inferior con avoidKeyboard: el teclado no tapa «Enviar valoración», que va fijo en el pie.
 function RatingForm({ item, onDone, onStale, onClose }) {
   const [positive, setPositive] = useState(null); // null hasta que elija
   const [comment, setComment] = useState('');
@@ -18,10 +21,30 @@ function RatingForm({ item, onDone, onStale, onClose }) {
 
   const submit = () => send(() => rateReturn(item.id, { positive, comment }));
 
+  const footer = (
+    <View>
+      <Button
+        title="Enviar valoración"
+        loadingTitle="Enviando…"
+        onPress={submit}
+        loading={sending}
+        dimmed={!isOnline}
+        disabled={positive === null}
+        disabledReason={positive === null ? 'Elegí si fue positiva o negativa.' : undefined}
+      />
+      <Button variant="link" title="Cancelar" onPress={onClose} disabled={sending} />
+    </View>
+  );
+
   return (
-    <View style={styles.sheet}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.heading}>Valorar a {item.counterpart?.name || 'la otra persona'}</Text>
+    <Sheet
+      visible
+      onClose={onClose}
+      title={`Valorar a ${item.counterpart?.name || 'la otra persona'}`}
+      avoidKeyboard
+      footer={footer}
+    >
+      <ScrollView keyboardShouldPersistTaps="handled">
         <Text style={styles.hint}>Tenés hasta 7 días desde la devolución.</Text>
 
         <View style={styles.row}>
@@ -40,31 +63,19 @@ function RatingForm({ item, onDone, onStale, onClose }) {
         />
         <Text style={styles.counter}>{charCount(comment)}/{MAX_COMMENT}</Text>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Banner kind="warn" message={error} style={styles.error} /> : null}
       </ScrollView>
-      <View style={styles.footer}>
-        <Button title="Enviar" onPress={submit} loading={sending} dimmed={!isOnline} disabled={positive === null} />
-        <Button variant="link" title="Cancelar" onPress={onClose} disabled={sending} />
-      </View>
-    </View>
+    </Sheet>
   );
 }
 
 export default function RatingModal({ item, onDone, onStale, onClose }) {
-  return (
-    <Modal visible={Boolean(item)} animationType="slide" onRequestClose={onClose}>
-      {item ? <RatingForm item={item} onDone={onDone} onStale={onStale} onClose={onClose} /> : null}
-    </Modal>
-  );
+  return item ? <RatingForm item={item} onDone={onDone} onStale={onStale} onClose={onClose} /> : null;
 }
 
 const styles = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  heading: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  hint: { color: colors.muted, marginBottom: spacing.md },
-  row: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.md },
-  counter: { color: colors.muted, fontSize: 12, textAlign: 'right', marginTop: -spacing.sm, marginBottom: spacing.md },
-  error: { color: colors.error, marginBottom: spacing.sm },
-  footer: { padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.surface },
+  hint: { ...typography.body, color: colors.textDim, marginBottom: spacing.md },
+  row: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.sm },
+  counter: { ...typography.meta, color: colors.textDim, textAlign: 'right', marginTop: -spacing.md, marginBottom: spacing.md },
+  error: { marginBottom: spacing.md },
 });

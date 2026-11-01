@@ -1,43 +1,38 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import Chip from './Chip';
+import Icon from './Icon';
+import { colors, spacing, typography } from '../constants/theme';
 
-// Elegir una opción de una lista corta. options: [{ id, name }]
+// Elegir una opción de una lista corta, con Chip. options: [{ id, name }]
+// label: etiqueta del grupo (14 sp). error: mensaje debajo, con ícono y texto de 16 sp.
 export default function OptionChips({ label, options, selectedId, onSelect, error }) {
   return (
     <View style={styles.wrapper}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={styles.row}>
-        {options.map((option) => {
-          const selected = option.id === selectedId;
-          return (
-            <Pressable
-              key={option.id}
-              onPress={() => onSelect(option.id)}
-              style={[styles.chip, selected && styles.chipSelected]}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{option.name}</Text>
-            </Pressable>
-          );
-        })}
+        {options.map((option) => (
+          <Chip
+            key={option.id}
+            label={option.name}
+            selected={option.id === selectedId}
+            onPress={() => onSelect(option.id)}
+          />
+        ))}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorRow}>
+          <Icon name="warning" size={20} color={colors.danger} />
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: { marginBottom: spacing.md },
-  label: { marginBottom: spacing.xs, color: colors.text, fontWeight: '500' },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 20,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.text },
-  chipTextSelected: { color: '#fff', fontWeight: '600' },
-  error: { marginTop: spacing.xs, color: colors.error, fontSize: 13 },
+  label: { ...typography.caption, marginBottom: spacing.sm, color: colors.textDim },
+  row: { flexDirection: 'row', flexWrap: 'wrap' },
+  errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginTop: spacing.xs },
+  error: { ...typography.body, flex: 1, color: colors.danger },
 });

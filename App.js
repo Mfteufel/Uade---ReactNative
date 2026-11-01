@@ -12,7 +12,7 @@ export default function App() {
         <AuthProvider>
           <PendingPublicationsProvider>
             <AppNavigator />
-            <StatusBar style="auto" />
+            <StatusBar style="light" />
           </PendingPublicationsProvider>
         </AuthProvider>
       </NetworkProvider>

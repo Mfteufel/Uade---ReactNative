@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Input from './Input';
-import { colors, spacing } from '../constants/theme';
+import { colors, spacing, typography } from '../constants/theme';
 
 // Elegir un barrio de la lista: se escribe para filtrar y se toca una sugerencia.
 // selected: { id, name } o null. suggestions: barrios que coinciden con la búsqueda.
@@ -21,7 +21,13 @@ export default function NeighborhoodPicker({ label, selected, search, onSearchCh
         error={error}
       />
       {suggestions.map((item) => (
-        <Pressable key={item.id} onPress={() => onSelect(item)} style={styles.option}>
+        <Pressable
+          key={item.id}
+          onPress={() => onSelect(item)}
+          style={styles.option}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.name}, ${item.locality}`}
+        >
           <Text style={styles.optionText}>{item.name}</Text>
           <Text style={styles.optionLocality}>{item.locality}</Text>
         </Pressable>
@@ -32,16 +38,18 @@ export default function NeighborhoodPicker({ label, selected, search, onSearchCh
 
 const styles = StyleSheet.create({
   selected: { marginBottom: spacing.md },
-  label: { color: colors.text, fontWeight: '500', marginBottom: spacing.xs },
-  selectedName: { fontSize: 16, color: colors.primary, fontWeight: '700' },
+  label: { ...typography.caption, color: colors.textDim, marginBottom: spacing.xs },
+  selectedName: { ...typography.bodyStrong, color: colors.primary },
   option: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 48,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.surface,
   },
-  optionText: { color: colors.text, fontSize: 16 },
-  optionLocality: { color: colors.muted },
+  optionText: { ...typography.body, color: colors.text },
+  optionLocality: { ...typography.meta, color: colors.textDim },
 });
