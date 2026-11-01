@@ -244,6 +244,7 @@ Esto **todavía no está disponible** en la app (el backend tiene el esquema de 
 | La primera respuesta tarda o aparece un 503 al arrancar | Neon "despierta" la base en unos segundos. Esperá y reintentá. |
 | El QR no abre el proyecto | En Expo Go, ingresá `exp://<IP de tu PC>:8082` a mano. |
 | El celular no llega a la PC | Revisá el firewall: en Windows permití Node en redes privadas o abrí los puertos TCP 3000 y 8082; en Linux, `sudo ufw allow 3000/tcp` y `sudo ufw allow 8082/tcp`; en macOS, aceptá el aviso de conexiones entrantes. |
+| El QR o `exp://...` no abre por Wi-Fi (Android 17) | Expo Go se instala sin el permiso de red local. Si el QR o `exp://...` no abre por Wi-Fi, andá a Ajustes > Apps > Expo Go > Permisos y activá "Dispositivos cercanos" / "Red local". Por USB no hace falta. |
 | La IP detectada no es la correcta (VPN, máquinas virtuales, WSL) | Forzala: `npm run dev:neon -- --ip=<IP>`. |
 | La red del celular aísla a los dispositivos (redes públicas o de invitados) | Usá `npm run dev:usb-neon`. |
 | "Network Error" en la app | Abrí `http://<IP>:3000/health` desde el navegador del celular. Si no responde, es red o firewall. |
