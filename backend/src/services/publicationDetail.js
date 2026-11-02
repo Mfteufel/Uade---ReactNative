@@ -6,8 +6,8 @@ const { getPublicProfile } = require('./publicProfile');
 async function getPublicationDetail(id, viewerId) {
   const r = await query(
     `SELECT p.id, p.user_id, p.type, p.title, p.description,
-            -- Si ya venció y nadie actualizó el estado, se muestra vencida.
-            CASE WHEN p.status IN ('open', 'in_claim') AND p.expires_at <= now() THEN 'expired'
+            -- Si ya venció y nadie actualizó el estado, se muestra vencida. Una en reclamo no vence.
+            CASE WHEN p.status = 'open' AND p.expires_at <= now() THEN 'expired'
                  ELSE p.status END AS status,
             p.category_id, c.name AS category_name,
             p.neighborhood_id, n.name AS neighborhood_name,

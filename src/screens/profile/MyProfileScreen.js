@@ -8,6 +8,7 @@ import ListRow from '../../components/ListRow';
 import ReputationCard from '../../components/ReputationCard';
 import SectionTitle from '../../components/SectionTitle';
 import { USE_MOCK } from '../../config';
+import { useNovedades } from '../../context/NovedadesContext';
 import { SAMPLE_USERS } from '../../constants/sampleUsers';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 import useMyProfile from '../../hooks/useMyProfile';
@@ -15,6 +16,7 @@ import { formatMemberSince } from '../../utils/memberSince';
 
 export default function MyProfileScreen({ navigation }) {
   const { user, loading, reputation, error, load } = useMyProfile();
+  const { alertasNuevas, seguidasConNovedad } = useNovedades();
 
   if (loading && !user) {
     return (
@@ -52,10 +54,23 @@ export default function MyProfileScreen({ navigation }) {
         ) : null}
       </Card>
 
-      {/* Sin contadores: no hay dato real de cantidades. Previstas: Mis alertas, Seguidas (punto 9). */}
       <View style={styles.group}>
         <ListRow icon="list" title="Mis publicaciones" onPress={() => navigation.navigate('MyPublications')} />
         <ListRow icon="tag" title="Mis reclamos" onPress={() => navigation.navigate('MyClaims')} />
+        <ListRow
+          icon="search"
+          title="Mis alertas"
+          count={alertasNuevas > 0 ? alertasNuevas : undefined}
+          dot={alertasNuevas > 0}
+          onPress={() => navigation.navigate('MyAlerts')}
+        />
+        <ListRow
+          icon="heart"
+          title="Seguidas"
+          count={seguidasConNovedad > 0 ? seguidasConNovedad : undefined}
+          dot={seguidasConNovedad > 0}
+          onPress={() => navigation.navigate('Follows')}
+        />
         <ListRow icon="history" title="Mi historial" onPress={() => navigation.navigate('History')} />
         <ListRow icon="edit" title="Editar perfil" onPress={() => navigation.navigate('EditProfile')} />
         <ListRow icon="eye" title="Cómo me ven otros" onPress={() => navigation.navigate('PublicProfile', { userId: user.id })} />
