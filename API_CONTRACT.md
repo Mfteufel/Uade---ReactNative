@@ -1034,7 +1034,8 @@ Una alerta es una búsqueda guardada con su tipo, categoría, palabras clave y b
 - `cantidadNuevas`: publicaciones que coinciden con la alerta y se publicaron después de la última vez que se miró
   (`POST /alertas/:id/vista`). Coinciden con las mismas reglas que `GET /publicaciones`: vigentes y de otras personas.
   Si la alerta está pausada, llega `0`.
-- `tipo`, `categoria`, `barrio` y `q` pueden ser `null`. Las que se crean desde la app siempre tienen `tipo`.
+- `categoria`, `barrio` y `q` pueden ser `null`. `tipo` siempre llega: una alerta sin tipo guardado (datos de ejemplo)
+  se trata como `found`, tanto en `tipo` como en `cantidadNuevas`.
 
 ### POST `/alertas`
 Body: `{ "tipo": "found", "categoria": "keys", "q": "osito", "barrio": "palermo" }`. Solo `tipo` es obligatorio; los criterios

@@ -1,9 +1,18 @@
 import { useEffect } from 'react';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import Banner from '../../components/Banner';
+import Button from '../../components/Button';
+import Card from '../../components/Card';
+import EmptyState from '../../components/EmptyState';
+import Icon from '../../components/Icon';
+import SkeletonCard from '../../components/SkeletonCard';
+import StateTag from '../../components/StateTag';
 import { useNovedades } from '../../context/NovedadesContext';
 import { markFollowSeen } from '../../services/followsApi';
 import { PUBLICATION_STATUS } from '../../constants/publications';
-import { colors, spacing } from '../../constants/theme';
+import { colors, radius, spacing, typography } from '../../constants/theme';
+
+const NEWS_LABEL = 'Cambió de estado';
 
 // Publicaciones que sigo. Las que cambiaron de estado desde la última vez que las vi vienen primero, marcadas.
 export default function FollowsScreen({ navigation }) {
@@ -26,89 +35,83 @@ export default function FollowsScreen({ navigation }) {
 
   function renderFollow({ item }) {
     const status = PUBLICATION_STATUS[item.status];
-    return (
-      <TouchableOpacity style={styles.card} onPress={() => openPublication(item)}>
-        {item.photoUrl ? (
-          <Image source={{ uri: item.photoUrl }} style={styles.photo} />
-        ) : (
-          <View style={styles.noPhoto}>
-            <Text style={styles.muted}>Sin foto</Text>
-          </View>
-        )}
-        <View style={styles.body}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={{ color: status.color, fontWeight: 'bold' }}>{status.label}</Text>
-          <Text style={styles.muted}>
-            {item.category.name} · {item.neighborhood.name}
-          </Text>
-          {item.tieneNovedad ? (
-            <View style={styles.news}>
-              <Text style={styles.newsText}>Cambió de estado</Text>
-            </View>
-          ) : null}
-        </View>
-      </TouchableOpacity>
-    );
-  }
+    const label = [item.title, item.neighborhood.name, `Estado: ${status.label}`, item.tieneNovedad ? NEWS_LABEL : '']
+      .filter(Boolean)
+      .join('. ');
 
-  if (!cargado) {
     return (
-      <View style={styles.screen}>
-        <Text style={styles.message}>{error || 'Cargando...'}</Text>
-        {error ? (
-          <TouchableOpacity onPress={recargar}>
-            <Text style={styles.link}>Reintentar</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+      <Card tight style={styles.card} onPress={() => openPublication(item)} accessibilityLabel={label}>
+        <View style={styles.row}>
+          {item.photoUrl ? (
+            <Image source={{ uri: item.photoUrl }} style={styles.thumb} accessibilityIgnoresInvertColors />
+          ) : (
+            <View style={[styles.thumb, styles.noPhoto]}>
+              <Icon name="image" size={32} color={colors.textDim} />
+            </View>
+          )}
+          <View style={styles.body}>
+            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.meta}>
+              {item.category.name} · {item.neighborhood.name}
+            </Text>
+            <View style={styles.tag}>
+              <StateTag label={status.label} fg={status.color} bg={status.bg} />
+            </View>
+            {item.tieneNovedad ? (
+              <View style={styles.tag}>
+                <StateTag label={NEWS_LABEL} fg={colors.accent800} bg={colors.warnSoft} />
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Card>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {seguidas.length === 0 ? (
-        <Text style={styles.message}>
-          Todavía no seguís ninguna publicación. En el detalle de una publicación tocá "Seguir publicación".
-        </Text>
+    <View style={styles.container}>
+      {error ? (
+        <View style={styles.errorBox}>
+          <Banner kind="warn" message={error} />
+          <Button variant="link" title="Reintentar" onPress={recargar} />
+        </View>
+      ) : null}
+
+      {!cargado && !error ? (
+        <View style={styles.list}>
+          <SkeletonCard count={3} />
+        </View>
       ) : (
-        <FlatList data={seguidas} keyExtractor={(seguida) => seguida.id} renderItem={renderFollow} />
+        <FlatList
+          data={seguidas}
+          keyExtractor={(seguida) => seguida.id}
+          renderItem={renderFollow}
+          ListEmptyComponent={
+            error ? null : (
+              <EmptyState
+                icon="heart"
+                title="Todavía no seguís ninguna publicación."
+                message='En el detalle de una publicación, tocá "Seguir".'
+              />
+            )
+          }
+          contentContainerStyle={styles.list}
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
-  message: { color: colors.text, marginBottom: spacing.sm },
-  error: { color: colors.error, marginBottom: spacing.sm },
-  link: { color: colors.primary, fontWeight: 'bold' },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  photo: { width: 88, height: 88, borderRadius: 8, backgroundColor: colors.border },
-  noPhoto: {
-    width: 88,
-    height: 88,
-    borderRadius: 8,
-    backgroundColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body: { flex: 1, marginLeft: spacing.md },
-  title: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-  muted: { fontSize: 13, color: colors.muted, marginTop: spacing.xs },
-  news: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.error,
-    borderRadius: 12,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    marginTop: spacing.xs,
-  },
-  newsText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 },
+  container: { flex: 1, backgroundColor: colors.surface },
+  list: { padding: spacing.screen },
+  errorBox: { margin: spacing.screen, marginBottom: 0 },
+  card: { marginBottom: spacing.ms },
+  row: { flexDirection: 'row' },
+  thumb: { width: 88, height: 88, borderRadius: radius.thumb, backgroundColor: colors.neutral200 },
+  noPhoto: { alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1, marginLeft: spacing.ms },
+  title: { ...typography.bodyStrong, color: colors.text },
+  meta: { ...typography.meta, color: colors.textDim },
+  tag: { marginTop: spacing.xs },
 });

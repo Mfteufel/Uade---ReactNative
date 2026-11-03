@@ -1,28 +1,31 @@
 const crypto = require('crypto');
-const { query } = require('../db');
+const { query, withTransaction } = require('../db');
 const { HttpError } = require('../middleware/errors');
 const { parseRecentSearch } = require('./search');
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_ALERTS = 20;
 
+// Una búsqueda siempre tiene tipo, pero en la base una alerta puede no tenerlo (datos de ejemplo). Se trata como
+// "found": la app la abre como "Perdí", y así el contador coincide con lo que se ve en los resultados.
+const ALERT_TYPE_SQL = "COALESCE(a.publication_type, 'found')";
+
 const newAlertId = () => 'a_' + crypto.randomBytes(12).toString('hex');
 
 // Publicaciones nuevas de la alerta: creadas después de la última vez que se miró, con sus criterios.
 // Mismas reglas que la búsqueda (services/search.js): vigentes, de otra persona y palabras clave por texto completo.
-// Si la alerta no tiene tipo, cuentan las perdidas y las encontradas.
 const NEW_COUNT_SQL = `(SELECT count(*)::int FROM publications p
    WHERE p.status IN ('open', 'in_claim') AND p.expires_at > now()
      AND p.user_id <> a.user_id
      AND p.created_at > a.last_seen_at
-     AND (a.publication_type IS NULL OR p.type = a.publication_type)
+     AND p.type = ${ALERT_TYPE_SQL}
      AND (a.category_id IS NULL OR p.category_id = a.category_id)
      AND (a.neighborhood_id IS NULL OR p.neighborhood_id = a.neighborhood_id)
      AND (a.keywords IS NULL OR numnode(plainto_tsquery('spanish', a.keywords)) = 0
           OR p.search_tsv @@ plainto_tsquery('spanish', a.keywords)))`;
 
 // Una alerta pausada no cuenta novedades.
-const ALERT_SELECT = `SELECT a.id, a.publication_type, a.category_id, c.name AS category_name,
+const ALERT_SELECT = `SELECT a.id, ${ALERT_TYPE_SQL} AS publication_type, a.category_id, c.name AS category_name,
        a.neighborhood_id, n.name AS neighborhood_name, a.keywords, a.paused, a.created_at,
        CASE WHEN a.paused THEN 0 ELSE ${NEW_COUNT_SQL} END AS new_count
   FROM alerts a
@@ -71,25 +74,30 @@ async function createAlert(userId, body) {
     if (n.rowCount === 0) throw new HttpError(422, 'El barrio no existe.');
   }
 
-  const same = await query(
-    `SELECT 1 FROM alerts
-      WHERE user_id = $1 AND publication_type IS NOT DISTINCT FROM $2 AND category_id IS NOT DISTINCT FROM $3
-        AND keywords IS NOT DISTINCT FROM $4 AND neighborhood_id IS NOT DISTINCT FROM $5`,
-    [userId, tipo, categoria, q, barrio]
-  );
-  if (same.rowCount > 0) throw new HttpError(409, 'Ya tenés una alerta con esta búsqueda.');
-
-  const total = await query('SELECT count(*)::int AS n FROM alerts WHERE user_id = $1', [userId]);
-  if (total.rows[0].n >= MAX_ALERTS) {
-    throw new HttpError(422, `Podés tener hasta ${MAX_ALERTS} alertas. Eliminá alguna para guardar otra.`);
-  }
-
   const id = newAlertId();
-  await query(
-    `INSERT INTO alerts (id, user_id, publication_type, category_id, keywords, neighborhood_id)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [id, userId, tipo, categoria, q, barrio]
-  );
+  await withTransaction(async (c) => {
+    // FOR UPDATE: dos pedidos simultáneos de la misma persona pasan de a uno por estos controles.
+    await c.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
+
+    const same = await c.query(
+      `SELECT 1 FROM alerts
+        WHERE user_id = $1 AND publication_type IS NOT DISTINCT FROM $2 AND category_id IS NOT DISTINCT FROM $3
+          AND keywords IS NOT DISTINCT FROM $4 AND neighborhood_id IS NOT DISTINCT FROM $5`,
+      [userId, tipo, categoria, q, barrio]
+    );
+    if (same.rowCount > 0) throw new HttpError(409, 'Ya tenés una alerta con esta búsqueda.');
+
+    const total = await c.query('SELECT count(*)::int AS n FROM alerts WHERE user_id = $1', [userId]);
+    if (total.rows[0].n >= MAX_ALERTS) {
+      throw new HttpError(422, `Podés tener hasta ${MAX_ALERTS} alertas. Eliminá alguna para guardar otra.`);
+    }
+
+    await c.query(
+      `INSERT INTO alerts (id, user_id, publication_type, category_id, keywords, neighborhood_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [id, userId, tipo, categoria, q, barrio]
+    );
+  });
   const r = await query(`${ALERT_SELECT} WHERE a.id = $1`, [id]);
   return toAlert(r.rows[0]);
 }
