@@ -222,7 +222,7 @@ Todo lo siguiente existe hoy en la rama principal.
 - En los resultados de cualquier búsqueda, "Guardar alerta" guarda el tipo, la categoría, las palabras clave y el barrio. Si no hay resultados, el botón es "Guardar búsqueda como alerta".
 - Pestaña "Perfil", "Mis alertas": cada alerta muestra cuántas publicaciones nuevas coinciden, y se puede ver, pausar o eliminar. "Ver" abre los resultados y pone el contador en cero.
 - Pestaña "Perfil", "Seguidas": las publicaciones que seguís. Las que cambiaron de estado desde la última vez que las viste aparecen primero, con la marca "Cambió de estado", que se apaga al tocarlas.
-- Los avisos (el punto naranja en la pestaña "Perfil" y los contadores de "Mis alertas" y "Seguidas") se actualizan solos cada 30 segundos.
+- Los avisos (la campana arriba en "Buscar", con la cantidad de novedades, y los contadores de "Mis alertas" y "Seguidas") se actualizan solos cada 30 segundos. Tocar la campana lleva a la sección que tiene novedades.
 - Con `bruno.seed@hallado.com`: una alerta con una publicación nueva y una seguida con novedad.
 
 **10. Historial y valoraciones**
