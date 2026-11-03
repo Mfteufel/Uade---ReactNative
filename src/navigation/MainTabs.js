@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
+import { useNovedades } from '../context/NovedadesContext';
 import HeaderTitle from '../components/HeaderTitle';
 import SearchScreen from '../screens/search/SearchScreen';
 import MyClaimsScreen from '../screens/claims/MyClaimsScreen';
@@ -26,6 +27,7 @@ const BAR_HEIGHT = 56;
 // que lo alimente (choque C21), así que queda en false; cuando exista, pasar true desde acá.
 export default function MainTabs({ hasClaimsDot = false }) {
   const insets = useSafeAreaInsets();
+  const { alertasNuevas, seguidasConNovedad } = useNovedades();
 
   return (
     <Tab.Navigator
@@ -96,7 +98,7 @@ export default function MainTabs({ hasClaimsDot = false }) {
         component={MyProfileScreen}
         options={{
           title: 'Perfil',
-          ...tabOptions('Perfil', 'user', 'Mi perfil'),
+          ...tabOptions('Perfil', 'user', 'Mi perfil', alertasNuevas + seguidasConNovedad > 0),
         }}
       />
     </Tab.Navigator>

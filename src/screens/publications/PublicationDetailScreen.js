@@ -24,6 +24,7 @@ import { getPublication } from '../../services/publicationDetailApi';
 import { followPublication, unfollowPublication } from '../../services/followsApi';
 import { getViewed, saveViewed } from '../../services/viewedPublications';
 import { getErrorMessage, isNetworkError } from '../../services/errors';
+import { useNovedades } from '../../context/NovedadesContext';
 import { showOfflineToast } from '../../utils/offlineToast';
 import { formatApiDate } from '../../utils/dates';
 import { PUBLICATION_STATUS, TIME_SLOTS } from '../../constants/publications';
@@ -57,6 +58,7 @@ export default function PublicationDetailScreen({ route, navigation }) {
   const [error, setError] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
   const [saving, setSaving] = useState(false);
+  const { recargar } = useNovedades();
 
   const { user } = useAuth();
   const { isOnline } = useNetwork();
@@ -123,6 +125,7 @@ export default function PublicationDetailScreen({ route, navigation }) {
       if (publication.isFollowing) await unfollowPublication(publication.id);
       else await followPublication(publication.id);
       setPublication({ ...publication, isFollowing: !publication.isFollowing });
+      recargar(); // "Seguidas" se actualiza ahora, sin esperar al próximo polling
     } catch (e) {
       Alert.alert('No se pudo', getErrorMessage(e));
     } finally {

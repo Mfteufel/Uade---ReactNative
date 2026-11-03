@@ -10,9 +10,15 @@ import SearchFiltersModal from '../../components/SearchFiltersModal';
 import Sheet from '../../components/Sheet';
 import SkeletonCard from '../../components/SkeletonCard';
 import useSearchResults from '../../hooks/useSearchResults';
+import { useNetwork } from '../../context/NetworkContext';
+import { useNovedades } from '../../context/NovedadesContext';
+import { createAlert } from '../../services/alertsApi';
 import { getCategoriesCached } from '../../services/catalogApi';
+import { getErrorMessage } from '../../services/errors';
 import { colors, spacing, typography } from '../../constants/theme';
 import { describeSearch } from '../../utils/formatSearch';
+import { showOfflineToast } from '../../utils/offlineToast';
+import { toAlertBody } from '../../utils/searchCriteria';
 
 const soon = (what) => Alert.alert('Próximamente', what);
 
@@ -48,6 +54,9 @@ export default function ResultsScreen({ navigation, route }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [categories, setCategories] = useState([]);
+  const { isOnline } = useNetwork();
+  const { recargar } = useNovedades();
+  const [savingAlert, setSavingAlert] = useState(false);
 
   // Solo para escribir el nombre de la categoría en el resumen; si falla, el resumen la omite.
   useEffect(() => {
@@ -64,6 +73,23 @@ export default function ResultsScreen({ navigation, route }) {
       navigation.navigate('PublicationDetail', { publicationId: item.id });
     } else {
       soon('El detalle de la publicación llega con el punto 4.');
+    }
+  };
+
+  // Guarda los criterios actuales como alerta. La zona por ubicación no se guarda: solo el barrio.
+  const saveAlert = async () => {
+    if (savingAlert) return;
+    if (!isOnline) return showOfflineToast();
+    setSavingAlert(true);
+    try {
+      await createAlert(toAlertBody(filters));
+      recargar();
+      const noZone = filters.lat !== undefined && !filters.barrio ? ' La alerta no guarda la zona de tu ubicación.' : '';
+      Alert.alert('Alerta guardada', `Vas a ver las publicaciones nuevas en Perfil > Mis alertas.${noZone}`);
+    } catch (e) {
+      Alert.alert('No se pudo guardar la alerta', getErrorMessage(e));
+    } finally {
+      setSavingAlert(false);
     }
   };
 
@@ -89,6 +115,9 @@ export default function ResultsScreen({ navigation, route }) {
       <View style={styles.chips}>
         <Chip label="Refinar" onPress={() => setFiltersOpen(true)} accessibilityLabel="Refinar la búsqueda" />
         <Chip label={orderLabel} onPress={() => setOrderOpen(true)} accessibilityLabel={`Ordenar: ${orderLabel}`} />
+        {items.length > 0 ? (
+          <Chip label="Guardar alerta" onPress={saveAlert} accessibilityLabel="Guardar esta búsqueda como alerta" />
+        ) : null}
       </View>
     </View>
   );
@@ -121,7 +150,6 @@ export default function ResultsScreen({ navigation, route }) {
       />
     );
   } else {
-    // TODO (punto 9): el secundario «Guardar búsqueda como alerta» queda fuera de alcance.
     empty = (
       <EmptyState
         icon="search"
@@ -132,6 +160,15 @@ export default function ResultsScreen({ navigation, route }) {
             variant="accent"
             title={isPerdi ? 'Publicar mi pérdida' : 'Publicar mi hallazgo'}
             onPress={() => navigation.navigate('Publish', { type: isPerdi ? 'lost' : 'found' })}
+          />
+        }
+        secondaryAction={
+          <Button
+            variant="secondary"
+            title="Guardar búsqueda como alerta"
+            loading={savingAlert}
+            loadingTitle="Guardando…"
+            onPress={saveAlert}
           />
         }
       />

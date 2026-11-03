@@ -22,6 +22,8 @@ import MeetingPointScreen from '../screens/claims/MeetingPointScreen';
 import PublishScreen from '../screens/publications/PublishScreen';
 import MyPublicationsScreen from '../screens/publications/MyPublicationsScreen';
 import PublicationDetailScreen from '../screens/publications/PublicationDetailScreen';
+import MyAlertsScreen from '../screens/alerts/MyAlertsScreen';
+import FollowsScreen from '../screens/follows/FollowsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -58,6 +60,8 @@ export default function AppNavigator() {
             <Stack.Screen name="MeetingPoint" component={MeetingPointScreen} options={{ title: 'Punto de encuentro' }} />
             <Stack.Screen name="Publish" component={PublishScreen} options={{ title: 'Publicar' }} />
             <Stack.Screen name="MyPublications" component={MyPublicationsScreen} options={{ title: 'Mis publicaciones' }} />
+            <Stack.Screen name="MyAlerts" component={MyAlertsScreen} options={{ title: 'Mis alertas' }} />
+            <Stack.Screen name="Follows" component={FollowsScreen} options={{ title: 'Seguidas' }} />
           </>
         ) : (
           <>

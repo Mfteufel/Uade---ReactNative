@@ -70,3 +70,12 @@ export function toRecentBody(filters) {
   }
   return body;
 }
+
+// Criterios de la pantalla -> body de POST /alertas. La alerta guarda solo tipo, categoría, palabras clave y barrio.
+export function toAlertBody(filters) {
+  const body = { tipo: situacionToTipo(filters.situacion) };
+  for (const key of ['categoria', 'q', 'barrio']) {
+    if (filters[key] !== null && filters[key] !== undefined && filters[key] !== '') body[key] = filters[key];
+  }
+  return body;
+}

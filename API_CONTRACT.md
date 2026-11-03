@@ -49,8 +49,8 @@ Cuando se supera un límite: `429` con
 | Todo `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
 | `/reclamos/*`, `/puntos-encuentro/*`, `/publicaciones/:id/reclamos/*`, `/barrios`, `/historial` y `/devoluciones/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 | `POST /reclamos/foto` | 10 subidas / hora (cuenta también las fallidas) | Usuario |
-| `GET /publicaciones/:id` y todo `/seguidas/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
-| `GET /publicaciones/:id` y `/seguidas/*` sin token válido | 100 respuestas 401 / 15 min | IP |
+| `GET /publicaciones/:id`, todo `/seguidas/*` y todo `/alertas/*` | 300 pedidos / 15 min (mismo contador que `/users/*`) | Usuario |
+| `GET /publicaciones/:id`, `/seguidas/*` y `/alertas/*` sin token válido | 100 respuestas 401 / 15 min | IP |
 
 ### Códigos de error usados
 
@@ -956,7 +956,7 @@ Detalle de una publicación. Requiere token. Rate limit: los mismos de `/users/*
 - `exactAddress`: solo para quien publicó o quien tiene un reclamo `accepted` sobre esta publicación. Para el resto llega `null`.
 - `isOwner`: si quien pide es quien publicó. `isFollowing`: si quien pide la sigue.
 - No incluye la pregunta ni la respuesta de verificación, ni el mail o el teléfono del publicador.
-- `status`: si ya llegó el vencimiento y seguía `open` o `in_claim`, llega `expired`.
+- `status`: si ya llegó el vencimiento y seguía `open`, llega `expired` (una `in_claim` no vence).
 - `photoUrls` va ordenado por posición (puede estar vacío) y se piden con `GET /photos/:id`, sin token.
   `description`, `timeFrom` y `timeTo` pueden ser `null`.
 
@@ -977,6 +977,90 @@ Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` 
 
 ---
 
+## Seguidas y alertas (punto 9)
+
+Todas requieren token. Rate limit: los mismos de `/users/*`.
+
+### GET `/seguidas`
+Publicaciones que sigue quien pide: primero las que tienen novedad, después la que se empezó a seguir más recientemente.
+
+200:
+```json
+[
+  {
+    "id": "p_ab12...",
+    "type": "found",
+    "title": "Llaves con llavero de osito",
+    "status": "open",
+    "category": { "id": "keys", "name": "Llaves" },
+    "neighborhood": { "id": "palermo", "name": "Palermo" },
+    "occurredOn": "2026-10-24",
+    "photoUrl": "http://localhost:3000/photos/3f2c1a9e-0b7d-4c1e-9a8f-2d6b5e7c8a90",
+    "tieneNovedad": true
+  }
+]
+```
+- `tieneNovedad`: la publicación cambió de estado desde la última vez que la persona la vio (`status_changed_at > seen_at`).
+  Si está vencida se compara `expires_at`, porque el estado puede actualizarse días después del vencimiento.
+- `status`: como en el detalle, si ya venció y seguía `open`, llega `expired` (una `in_claim` no vence).
+- `photoUrl`: la primera foto, o `null` si no tiene.
+
+Errores: 401 sin token o con token inválido.
+
+### POST `/seguidas/:publicacionId/vista`
+La persona vio el estado actual: `tieneNovedad` vuelve a `false` hasta el próximo cambio. La app lo llama al tocar una
+publicación con novedad en "Seguidas". 204 sin cuerpo.
+
+Errores: 401; 404 `No seguís esta publicación.`; 404 `Publicación no encontrada.` si el id tiene formato inválido.
+
+### GET `/alertas`
+Una alerta es una búsqueda guardada con su tipo, categoría, palabras clave y barrio (la zona por ubicación y las fechas no se guardan).
+
+200 (la más nueva primero):
+```json
+[
+  {
+    "id": "a_3f2c1a9e0b7d4c1e9a8f2d6b",
+    "tipo": "found",
+    "categoria": { "id": "keys", "name": "Llaves" },
+    "barrio": { "id": "palermo", "name": "Palermo" },
+    "q": "osito",
+    "pausada": false,
+    "cantidadNuevas": 2,
+    "createdAt": "2026-10-30T15:04:05.000Z"
+  }
+]
+```
+- `cantidadNuevas`: publicaciones que coinciden con la alerta y se publicaron después de la última vez que se miró
+  (`POST /alertas/:id/vista`). Coinciden con las mismas reglas que `GET /publicaciones`: vigentes y de otras personas.
+  Si la alerta está pausada, llega `0`.
+- `categoria`, `barrio` y `q` pueden ser `null`. `tipo` siempre llega: una alerta sin tipo guardado (datos de ejemplo)
+  se trata como `found`, tanto en `tipo` como en `cantidadNuevas`.
+
+### POST `/alertas`
+Body: `{ "tipo": "found", "categoria": "keys", "q": "osito", "barrio": "palermo" }`. Solo `tipo` es obligatorio; los criterios
+se validan igual que en `GET /publicaciones`.
+
+201: la alerta creada, con el mismo formato que en `GET /alertas`.
+
+Errores: 401; 409 `Ya tenés una alerta con esta búsqueda.`; 422 si un criterio no es válido, si la categoría o el barrio
+no existen, o si ya tiene 20 alertas.
+
+### POST `/alertas/:id/pausa`
+Pausa o reanuda la alerta. Body: `{ "pausada": true }`. 204 sin cuerpo.
+
+Errores: 401; 404 `Alerta no encontrada.` (no existe, es de otra persona o el id tiene formato inválido); 422 si `pausada` no es `true` ni `false`.
+
+### DELETE `/alertas/:id`
+204 sin cuerpo. Errores: 401; 404 `Alerta no encontrada.`
+
+### POST `/alertas/:id/vista`
+Las nuevas pasan a vistas: `cantidadNuevas` vuelve a `0`. La app lo llama al tocar "Ver". 204 sin cuerpo.
+
+Errores: 401; 404 `Alerta no encontrada.`
+
+---
+
 ## Pendiente para el backend (todavía no implementado)
 
 - **Reclamos (punto 7)**: implementados, ver la sección "Reclamos". El teléfono de la otra parte ya lo decide el servidor en `Claim.otherParty.phone`.
@@ -988,7 +1072,7 @@ Errores: 401 sin token o con token inválido; 404 `Publicación no encontrada.` 
 - **Reglas a cargo de la API** (la base no las asegura): el reclamo debe estar `accepted` para proponer un punto de encuentro y quien propone
   es una de las dos partes; se puede valorar hasta 7 días después de la devolución; el reclamo vence a las 48 h y la publicación a los 30 días
   (lo fija el endpoint); `verification_answer` y `exact_address` son privadas; `client_id` lo genera la app (idempotencia offline).
-- **Seguidas**: la novedad es `publications.status_changed_at > follows.seen_at`.
+- **Seguidas y alertas (punto 9)**: implementadas, ver la sección "Seguidas y alertas".
 - **Historial de devoluciones**: `GET /historial` ya existe (ver arriba). `POST /devoluciones/:id/valoraciones` y `POST /devoluciones/:id/agradecimiento` también. Los agradecimientos ya se muestran en el perfil público (`thanks`).
 
 ## Datos de ejemplo (seed)

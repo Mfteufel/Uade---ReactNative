@@ -218,6 +218,13 @@ Todo lo siguiente existe hoy en la rama principal.
 - Con el lugar acordado, quien recupera el objeto confirma la devolución con "Ya recibí el objeto": se registra en `returns` (de ahí sale el historial) y la publicación pasa a "Resuelta". Quien lo entregó no puede confirmarla.
 - Las valoraciones y el historial están en el punto 10.
 
+**9. Alertas y seguidas**
+- En los resultados de cualquier búsqueda, "Guardar alerta" guarda el tipo, la categoría, las palabras clave y el barrio. Si no hay resultados, el botón es "Guardar búsqueda como alerta".
+- Pestaña "Perfil", "Mis alertas": cada alerta muestra cuántas publicaciones nuevas coinciden, y se puede ver, pausar o eliminar. "Ver" abre los resultados y pone el contador en cero.
+- Pestaña "Perfil", "Seguidas": las publicaciones que seguís. Las que cambiaron de estado desde la última vez que las viste aparecen primero, con la marca "Cambió de estado", que se apaga al tocarlas.
+- Los avisos (el punto naranja en la pestaña "Perfil" y los contadores de "Mis alertas" y "Seguidas") se actualizan solos cada 30 segundos.
+- Con `bruno.seed@hallado.com`: una alerta con una publicación nueva y una seguida con novedad.
+
 **10. Historial y valoraciones**
 - Con `bruno.seed@hallado.com` o `carla.seed@hallado.com`: "Mi historial" (desde la pantalla principal), pestañas "Devolví" / "Recuperé", y filtros de fecha, tipo (perdido / encontrado) y categoría.
 - Valorar y agradecer: solo dentro de los 7 días desde la devolución. La devolución de los datos de ejemplo puede estar vencida; los autores la refrescan con `db:refrescar-fechas`.
@@ -226,9 +233,7 @@ Todo lo siguiente existe hoy en la rama principal.
 
 ## Estado de la entrega
 
-Esto **todavía no está disponible** en la app (el backend tiene el esquema de base, pero faltan rutas y pantallas):
-
-- Alertas y publicaciones seguidas: el botón seguir / dejar de seguir ya funciona desde el detalle de la publicación (`POST` y `DELETE /seguidas`), pero las secciones "Mis alertas" y "Seguidas" (listados y novedades) todavía no existen.
+Están implementados los diez puntos del enunciado.
 
 ## Qué no hace el modo Neon
 
