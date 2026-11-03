@@ -37,15 +37,15 @@ function timeSlotText(timeFrom, timeTo) {
   return slot ? slot.name : `de ${timeFrom} a ${timeTo} h`;
 }
 
-// Par etiqueta-valor con ícono.
-function InfoRow({ icon, label, value }) {
+// Un dato en una tarjetita (ícono, etiqueta y valor). Van de a dos por fila; `wide` ocupa todo el ancho.
+function InfoTile({ icon, label, value, wide = false }) {
   return (
-    <View style={styles.infoRow} accessible accessibilityLabel={`${label}: ${value}`}>
-      <Icon name={icon} size={24} color={colors.textDim} />
-      <View style={styles.infoTexts}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
+    <View style={wide ? [styles.tile, styles.tileWide] : styles.tile} accessible accessibilityLabel={`${label}: ${value}`}>
+      <View style={styles.tileHeader}>
+        <Icon name={icon} size={20} color={colors.blue600} />
+        <Text style={styles.tileLabel}>{label}</Text>
       </View>
+      <Text style={styles.tileValue}>{value}</Text>
     </View>
   );
 }
@@ -182,18 +182,18 @@ export default function PublicationDetailScreen({ route, navigation }) {
           {publication.title}
         </Text>
         {status ? <StateTag label={status.label} fg={status.color} bg={status.bg} /> : null}
-        <View style={styles.infoList}>
-          <InfoRow icon="search" label="Tipo" value={publication.type === 'found' ? 'Encontrado' : 'Perdido'} />
-          <InfoRow icon="tag" label="Categoría" value={publication.category.name} />
-          <InfoRow icon="location" label="Barrio" value={publication.neighborhood.name} />
-          <InfoRow icon="calendar" label="Fecha" value={formatApiDate(publication.occurredOn)} />
-          {slot ? <InfoRow icon="clock" label="Franja horaria" value={slot} /> : null}
-          {publication.exactAddress ? <InfoRow icon="pin" label="Dirección" value={publication.exactAddress} /> : null}
+        {publication.description ? <Text style={styles.description}>{publication.description}</Text> : null}
+        <View style={styles.grid}>
+          <InfoTile icon="search" label="Tipo" value={publication.type === 'found' ? 'Encontrado' : 'Perdido'} />
+          <InfoTile icon="tag" label="Categoría" value={publication.category.name} />
+          <InfoTile icon="location" label="Barrio" value={publication.neighborhood.name} />
+          <InfoTile icon="calendar" label="Fecha" value={formatApiDate(publication.occurredOn)} />
+          {slot ? <InfoTile icon="clock" label="Franja horaria" value={slot} wide /> : null}
+          {publication.exactAddress ? <InfoTile icon="pin" label="Dirección" value={publication.exactAddress} wide /> : null}
         </View>
         {!publication.exactAddress && !publication.isOwner && (
           <Banner kind="info" message="La dirección exacta se muestra recién cuando se acepta un reclamo." />
         )}
-        {publication.description ? <Text style={styles.description}>{publication.description}</Text> : null}
       </View>
     );
   }
@@ -287,11 +287,18 @@ const styles = StyleSheet.create({
     borderColor: colors.blue600,
   },
   title: { ...typography.titleBar, color: colors.text, marginBottom: spacing.sm },
-  infoList: { marginVertical: spacing.sm },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms, paddingVertical: spacing.xs },
-  infoTexts: { flex: 1 },
-  infoLabel: { ...typography.caption, color: colors.textDim },
-  infoValue: { ...typography.body, color: colors.text },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: spacing.md },
+  tile: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.ms,
+    marginBottom: spacing.ms,
+  },
+  tileWide: { width: '100%' },
+  tileHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  tileLabel: { ...typography.caption, color: colors.textDim },
+  tileValue: { ...typography.bodyStrong, color: colors.text, marginTop: spacing.xs },
   description: { ...typography.body, color: colors.text, marginTop: spacing.ms },
   muted: { ...typography.body, color: colors.textDim },
   publisher: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms },

@@ -113,7 +113,7 @@ export default function ResultsScreen({ navigation, route }) {
     <View style={styles.toolbar}>
       <Text style={styles.summary} numberOfLines={2} accessibilityRole="header">{summary}</Text>
       <View style={styles.chips}>
-        <Chip label="Refinar" onPress={() => setFiltersOpen(true)} accessibilityLabel="Refinar la búsqueda" />
+        <Chip label="Filtros" onPress={() => setFiltersOpen(true)} accessibilityLabel="Filtros de la búsqueda" />
         <Chip label={orderLabel} onPress={() => setOrderOpen(true)} accessibilityLabel={`Ordenar: ${orderLabel}`} />
         {items.length > 0 ? (
           <Chip label="Guardar alerta" onPress={saveAlert} accessibilityLabel="Guardar esta búsqueda como alerta" />
@@ -154,7 +154,7 @@ export default function ResultsScreen({ navigation, route }) {
       <EmptyState
         icon="search"
         title="No encontramos publicaciones con esos criterios."
-        message="Probá con otros filtros desde «Refinar» o publicá lo tuyo para que otras personas lo vean."
+        message="Probá con otros filtros o publicá lo tuyo para que otras personas lo vean."
         action={
           <Button
             variant="accent"
@@ -219,7 +219,7 @@ export default function ResultsScreen({ navigation, route }) {
           />
         ))}
         {!canSortByDistance ? (
-          <Text style={styles.hint}>Para ordenar por cercanía, elegí un barrio o usá tu ubicación en Refinar.</Text>
+          <Text style={styles.hint}>Para ordenar por cercanía, elegí un barrio o usá tu ubicación en Filtros.</Text>
         ) : null}
       </Sheet>
     </View>
